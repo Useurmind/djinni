@@ -17,40 +17,40 @@ func TestNewClient(t *testing.T) {
 	if _, err := exec.LookPath("docker"); err != nil {
 		t.Log("Docker not found in PATH")
 	}
-	
+
 	tests := []struct {
-		name           string
-		hasDocker      bool
-		hasPodman      bool
-		wantErr        bool
-		expectedType   string
+		name         string
+		hasDocker    bool
+		hasPodman    bool
+		wantErr      bool
+		expectedType string
 	}{
 		{
-			name:           "docker found when podman not in system",
-			hasDocker:      true,
-			hasPodman:      false,
-			wantErr:        false,
-			expectedType:   "docker",
+			name:         "docker found when podman not in system",
+			hasDocker:    true,
+			hasPodman:    false,
+			wantErr:      false,
+			expectedType: "docker",
 		},
 		{
-			name:           "podman found",
-			hasDocker:      false,
-			hasPodman:      true,
-			wantErr:        false,
-			expectedType:   "podman",
+			name:         "podman found",
+			hasDocker:    false,
+			hasPodman:    true,
+			wantErr:      false,
+			expectedType: "podman",
 		},
 		{
-			name:           "both found (prefers podman)",
-			hasDocker:      true,
-			hasPodman:      true,
-			wantErr:        false,
-			expectedType:   "podman",
+			name:         "both found (prefers podman)",
+			hasDocker:    true,
+			hasPodman:    true,
+			wantErr:      false,
+			expectedType: "podman",
 		},
 		{
-			name:           "neither found",
-			hasDocker:      false,
-			hasPodman:      false,
-			wantErr:        true,
+			name:      "neither found",
+			hasDocker: false,
+			hasPodman: false,
+			wantErr:   true,
 		},
 	}
 
@@ -104,15 +104,15 @@ func TestNewClient(t *testing.T) {
 
 func TestRunContainer(t *testing.T) {
 	tmpDir := t.TempDir()
-	
+
 	tests := []struct {
-		name    string
-		mounts  []config.Mount
+		name      string
+		mounts    []config.Mount
 		hasDocker bool
 	}{
 		{
-			name:    "no mounts",
-			mounts:  []config.Mount{},
+			name:      "no mounts",
+			mounts:    []config.Mount{},
 			hasDocker: true,
 		},
 		{

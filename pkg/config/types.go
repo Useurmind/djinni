@@ -7,6 +7,7 @@ type AgentConfig struct {
 	Image          string   `yaml:"image"`
 	Containerfile  string   `yaml:"containerfile"`
 	Mounts         []Mount  `yaml:"mounts"`
+	DefaultModel   string   `yaml:"default_model"`
 }
 
 type Mount struct {
@@ -15,8 +16,24 @@ type Mount struct {
 	ReadOnly    bool   `yaml:"readOnly"`
 }
 
+type Model struct {
+	ID string `yaml:"id"`
+}
+
+type ModelProvider struct {
+	Name    string  `yaml:"name"`
+	APIBase string  `yaml:"apiBase"`
+	APIKey  string  `yaml:"apiKey"`
+	Models  []Model `yaml:"models"`
+}
+
+type AuthConfig struct {
+	ModelProviders []ModelProvider `yaml:"modelProviders"`
+}
+
 type Config struct {
-	Agents map[string]*AgentConfig `yaml:"agents"`
+	Agents       map[string]*AgentConfig `yaml:"agents"`
+	DefaultModel string                  `yaml:"default_model"`
 }
 
 func (c *Config) Validate() error {
@@ -36,6 +53,16 @@ func (c *Config) Validate() error {
 		if len(agent.HarnessCommand) == 0 {
 			return fmt.Errorf("agent '%s': harness_command is required", name)
 		}
+	}
+	return nil
+}
+
+func (p *ModelProvider) Validate() error {
+	if p.Name == "" {
+		return fmt.Errorf("model provider name cannot be empty")
+	}
+	if len(p.Models) == 0 {
+		return fmt.Errorf("model provider '%s': at least one model is required", p.Name)
 	}
 	return nil
 }

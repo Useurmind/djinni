@@ -108,7 +108,7 @@ func TestLoadConfig_DefaultPath(t *testing.T) {
 	if cfg == nil {
 		t.Fatal("LoadConfig() returned nil config")
 	}
-	if cfg.Agents == nil || len(cfg.Agents) == 0 {
+	if len(cfg.Agents) == 0 {
 		t.Fatal("Config has no agents")
 	}
 }
