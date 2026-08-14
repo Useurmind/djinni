@@ -5,6 +5,7 @@ import "fmt"
 type AgentConfig struct {
 	HarnessCommand []string `yaml:"harness_command"`
 	Image          string   `yaml:"image"`
+	Containerfile  string   `yaml:"containerfile"`
 	Mounts         []Mount  `yaml:"mounts"`
 }
 
@@ -20,8 +21,11 @@ type Config struct {
 
 func (c *Config) Validate() error {
 	for name, agent := range c.Agents {
-		if agent.Image == "" {
-			return fmt.Errorf("agent '%s': image is required", name)
+		if agent.Image == "" && agent.Containerfile == "" {
+			return fmt.Errorf("agent '%s': either image or containerfile is required", name)
+		}
+		if agent.Image != "" && agent.Containerfile != "" {
+			return fmt.Errorf("agent '%s': cannot specify both image and containerfile", name)
 		}
 		if len(agent.HarnessCommand) == 0 {
 			return fmt.Errorf("agent '%s': harness_command is required", name)

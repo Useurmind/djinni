@@ -35,8 +35,14 @@ var startAgentCmd = &cobra.Command{
 			return fmt.Errorf("failed to initialize container client: %w", err)
 		}
 
-		log.Info("Starting container...")
-		exitCode, err := client.RunContainer(agentCfg.Image, agentCfg.HarnessCommand, agentName, agentCfg.Mounts)
+		image := agentCfg.Image
+		if agentCfg.Containerfile != "" {
+			image = fmt.Sprintf("djinni-%s:latest", agentName)
+			log.Info(fmt.Sprintf("Using local image: %s", image))
+		}
+
+		log.Info(fmt.Sprintf("Using image: %s", image))
+		exitCode, err := client.RunContainer(image, agentCfg.HarnessCommand, agentName, agentCfg.Mounts)
 		if err != nil {
 			return fmt.Errorf("failed to run container: %w", err)
 		}

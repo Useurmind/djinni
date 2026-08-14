@@ -48,6 +48,33 @@ func (c *Client) RunContainer(image string, cmd []string, name string, mounts []
 	return c.runCommand(args)
 }
 
+func (c *Client) BuildContainer(name string, containerfile string) (int, error) {
+	if _, err := os.Stat(containerfile); os.IsNotExist(err) {
+		return 1, fmt.Errorf("containerfile '%s' does not exist", containerfile)
+	}
+
+	args := []string{"build", "-f", containerfile, "-t", fmt.Sprintf("djinni-%s:latest", name), "."}
+
+	log.Info(fmt.Sprintf("Building container: %s", name))
+	log.Info(fmt.Sprintf("Building from: %s", containerfile))
+	log.Info(fmt.Sprintf("Running: %s %s", c.Binary, strings.Join(args, " ")))
+
+	cmd := exec.Command(c.Binary, args...)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		exitErr, ok := err.(*exec.ExitError)
+		if ok {
+			return exitErr.ExitCode(), nil
+		}
+		return 1, fmt.Errorf("build failed: %w", err)
+	}
+	log.Success(fmt.Sprintf("Built image: djinni-%s:latest", name))
+	return 0, nil
+}
+
 func (c *Client) runCommand(args []string) (int, error) {
 	cmd := exec.Command(c.Binary, args...)
 	cmd.Stdin = os.Stdin
