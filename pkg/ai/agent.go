@@ -6,6 +6,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/openai"
+	"github.com/useurmind/djinni/pkg/config"
 )
 
 func (a *Agent) Execute() (string, error) {
@@ -96,7 +100,33 @@ func (a *Agent) executePrompt(ctx context.Context, input map[string]interface{})
 }
 
 func (a *Agent) simplePrompt(ctx context.Context, prompt string) (string, error) {
-	return fmt.Sprintf("PROMPT_RESULT: %s", prompt), nil
+	provider := a.Provider
+	if provider == nil {
+		return "", fmt.Errorf("provider is not set")
+	}
+
+	llm, err := a.createLLM(provider)
+	if err != nil {
+		return "", err
+	}
+
+	return llms.GenerateFromSinglePrompt(ctx, llm, prompt)
+}
+
+func (a *Agent) createLLM(provider *config.ModelProvider) (llms.Model, error) {
+	opts := []openai.Option{
+		openai.WithModel(a.ModelID),
+	}
+
+	if provider.APIKey != "" {
+		opts = append(opts, openai.WithToken(provider.APIKey))
+	}
+
+	if provider.APIBase != "" {
+		opts = append(opts, openai.WithBaseURL(provider.APIBase))
+	}
+
+	return openai.New(opts...)
 }
 
 func (a *Agent) listFilesInPath(path string) ([]string, error) {

@@ -1,12 +1,16 @@
 package ai
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/useurmind/djinni/pkg/config"
+)
 
 type Client struct {
-	provider *Provider
+	provider *config.ModelProvider
 }
 
-func NewClient(provider *Provider) (*Client, error) {
+func NewClient(provider *config.ModelProvider) (*Client, error) {
 	if provider.APIKey == "" {
 		return nil, fmt.Errorf("API key is required for model provider '%s'", provider.Name)
 	}

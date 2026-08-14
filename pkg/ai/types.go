@@ -1,19 +1,17 @@
 package ai
 
-import "context"
+import (
+	"context"
+
+	"github.com/useurmind/djinni/pkg/config"
+)
 
 type Agent struct {
-	Provider   *Provider
+	Provider   *config.ModelProvider
 	ModelID    string
 	Tools      []Tool
 	WorkingDir string
 	ReadPaths  []string
-}
-
-type Provider struct {
-	Name    string
-	APIBase string
-	APIKey  string
 }
 
 type Tool interface {
