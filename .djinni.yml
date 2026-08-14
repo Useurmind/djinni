@@ -1,13 +1,11 @@
 agents:
   local-agent:
     harness_command:
-      - python
-      - -m
-      - agent.harness
+      - bash
     containerfile: ./Containerfile
     mounts:
-      - source: ./models
-        destination: /app/models
+      - source: ./specs
+        destination: /app/specs
   registry-agent:
     harness_command:
       - python
@@ -15,5 +13,16 @@ agents:
       - agent.harness
     image: python:3.11-slim
     mounts:
-      - source: ./models
-        destination: /app/models
+      - source: ./specs
+        destination: /app/specs
+  git-agent:
+    harness_command:
+      - python
+      - -m
+      - agent.harness
+    containerfile: ./Containerfile
+    git_workspace:
+      base_directory: /tmp/git-agent
+    mounts:
+      - source: ./spec
+        destination: /app/specs

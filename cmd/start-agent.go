@@ -3,10 +3,12 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"github.com/useurmind/djinni/pkg/config"
 	"github.com/useurmind/djinni/pkg/docker"
+	"github.com/useurmind/djinni/pkg/git"
 	"github.com/useurmind/djinni/pkg/log"
 )
 
@@ -18,6 +20,7 @@ var startAgentCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		configPath, _ := cmd.Flags().GetString("config")
 		agentName := args[0]
+		taskName, _ := cmd.Flags().GetString("task")
 
 		cfg, err := config.LoadConfig(configPath)
 		if err != nil {
@@ -42,6 +45,43 @@ var startAgentCmd = &cobra.Command{
 		}
 
 		log.Info(fmt.Sprintf("Using image: %s", image))
+
+		var workspacePath string
+		if taskName != "" {
+			log.Info("Setting up git workspace mount...")
+			cwd, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("failed to get current directory: %w", err)
+			}
+
+			baseDir := agentCfg.GitWorkspace.BaseDirectory
+			if baseDir == "" {
+				baseDir = fmt.Sprintf("/tmp/%s", agentName)
+			}
+
+			workspacePath, err = git.CloneToTemp(cwd, baseDir, taskName)
+			if err != nil {
+				return fmt.Errorf("failed to clone workspace: %w", err)
+			}
+
+			if err := git.CheckoutNewBranch(workspacePath, taskName); err != nil {
+				defer git.CleanupWorkspace(workspacePath)
+				return fmt.Errorf("failed to checkout branch: %w", err)
+			}
+
+			repoName := filepath.Base(cwd)
+			mountPath := filepath.Join("/workspace", fmt.Sprintf("%s-%s", repoName, taskName))
+			workspaceMount := config.Mount{
+				Source:      workspacePath,
+				Destination: mountPath,
+			}
+			agentCfg.Mounts = append(agentCfg.Mounts, workspaceMount)
+
+			defer git.CleanupWorkspace(workspacePath)
+		} else if taskName != "" && agentCfg.GitWorkspace.BaseDirectory == "" {
+			return fmt.Errorf("git_workspace not configured for agent '%s'", agentName)
+		}
+
 		exitCode, err := client.RunContainer(image, agentCfg.HarnessCommand, agentName, agentCfg.Mounts)
 		if err != nil {
 			return fmt.Errorf("failed to run container: %w", err)
@@ -55,4 +95,6 @@ var startAgentCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(startAgentCmd)
 	startAgentCmd.Flags().StringP("config", "c", "", "Path to config file (default: .djinni.yml in current directory)")
+	startAgentCmd.Flags().StringP("task", "t", "", "Task name for workspace mount (creates feature/<taskname> branch)")
+	startAgentCmd.MarkFlagRequired("task")
 }

@@ -34,9 +34,9 @@ func (c *Client) RunContainer(image string, cmd []string, name string, mounts []
 	for _, m := range mounts {
 		var mountStr string
 		if m.ReadOnly {
-			mountStr = fmt.Sprintf("%s:%s:ro", m.Source, m.Destination)
+			mountStr = fmt.Sprintf("%s:%s:zro", m.Source, m.Destination)
 		} else {
-			mountStr = fmt.Sprintf("%s:%s", m.Source, m.Destination)
+			mountStr = fmt.Sprintf("%s:%s:z", m.Source, m.Destination)
 		}
 		args = append(args, "-v", mountStr)
 	}

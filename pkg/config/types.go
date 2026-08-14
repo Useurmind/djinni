@@ -3,17 +3,22 @@ package config
 import "fmt"
 
 type AgentConfig struct {
-	HarnessCommand []string `yaml:"harness_command"`
-	Image          string   `yaml:"image"`
-	Containerfile  string   `yaml:"containerfile"`
-	Mounts         []Mount  `yaml:"mounts"`
-	DefaultModel   string   `yaml:"default_model"`
+	HarnessCommand    []string         `yaml:"harness_command"`
+	Image             string           `yaml:"image"`
+	Containerfile     string           `yaml:"containerfile"`
+	Mounts            []Mount          `yaml:"mounts"`
+	DefaultModel      string           `yaml:"default_model"`
+	GitWorkspace      GitWorkspaceMount `yaml:"git_workspace"`
 }
 
 type Mount struct {
 	Source      string `yaml:"source"`
 	Destination string `yaml:"destination"`
 	ReadOnly    bool   `yaml:"readOnly"`
+}
+
+type GitWorkspaceMount struct {
+	BaseDirectory string `yaml:"base_directory"`
 }
 
 type Model struct {
@@ -52,6 +57,9 @@ func (c *Config) Validate() error {
 		}
 		if len(agent.HarnessCommand) == 0 {
 			return fmt.Errorf("agent '%s': harness_command is required", name)
+		}
+		if agent.GitWorkspace.BaseDirectory == "" {
+			agent.GitWorkspace.BaseDirectory = fmt.Sprintf("/tmp/%s", name)
 		}
 	}
 	return nil
