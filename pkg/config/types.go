@@ -20,7 +20,13 @@ type Config struct {
 }
 
 func (c *Config) Validate() error {
+	if c.Agents == nil {
+		c.Agents = make(map[string]*AgentConfig)
+	}
 	for name, agent := range c.Agents {
+		if name == "" {
+			return fmt.Errorf("agent name cannot be empty")
+		}
 		if agent.Image == "" && agent.Containerfile == "" {
 			return fmt.Errorf("agent '%s': either image or containerfile is required", name)
 		}
