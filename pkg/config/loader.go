@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"path/filepath"
 
 	"gopkg.in/yaml.v3"
 )
@@ -12,7 +13,7 @@ func LoadConfig(path string) (*Config, error) {
 		if err != nil {
 			return nil, err
 		}
-		path = cwd + "/.djinni.yml"
+		path = filepath.Join(cwd, ".djinni.yml")
 	}
 
 	data, err := os.ReadFile(path)
@@ -22,6 +23,10 @@ func LoadConfig(path string) (*Config, error) {
 
 	var cfg Config
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return nil, err
+	}
+
+	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
 
