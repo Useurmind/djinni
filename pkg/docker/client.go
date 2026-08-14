@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/useurmind/djinni/pkg/config"
+	"github.com/useurmind/djinni/pkg/log"
 )
 
 type Client struct {
@@ -17,6 +18,7 @@ type Client struct {
 func NewClient() (*Client, error) {
 	for _, binary := range []string{"podman", "docker"} {
 		if _, err := exec.LookPath(binary); err == nil {
+			log.Info(fmt.Sprintf("Detected container runtime: %s", binary))
 			return &Client{
 				Type:   binary,
 				Binary: binary,
@@ -42,6 +44,7 @@ func (c *Client) RunContainer(image string, cmd []string, name string, mounts []
 	args = append(args, image)
 	args = append(args, cmd...)
 
+	log.Info(fmt.Sprintf("Running: %s %s", c.Binary, strings.Join(args, " ")))
 	return c.runCommand(args)
 }
 

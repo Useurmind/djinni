@@ -4,10 +4,12 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/useurmind/djinni/pkg/log"
 	"gopkg.in/yaml.v3"
 )
 
 func LoadConfig(path string) (*Config, error) {
+	log.Info("Loading config...")
 	if path == "" {
 		cwd, err := os.Getwd()
 		if err != nil {
@@ -30,5 +32,6 @@ func LoadConfig(path string) (*Config, error) {
 		return nil, err
 	}
 
+	log.Success("Config loaded and validated")
 	return &cfg, nil
 }

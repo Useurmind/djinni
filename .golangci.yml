@@ -9,8 +9,6 @@ linters:
     - typecheck
 
 linters-settings:
-  govet:
-    check-shadowing: false
   errcheck:
     check-type-assertions: true
     check-blank: false

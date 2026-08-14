@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/useurmind/djinni/pkg/config"
 	"github.com/useurmind/djinni/pkg/docker"
+	"github.com/useurmind/djinni/pkg/log"
 )
 
 var startAgentCmd = &cobra.Command{
@@ -28,11 +29,13 @@ var startAgentCmd = &cobra.Command{
 			return fmt.Errorf("agent '%s' not found in config", agentName)
 		}
 
+		log.Info("Initializing container client...")
 		client, err := docker.NewClient()
 		if err != nil {
 			return fmt.Errorf("failed to initialize container client: %w", err)
 		}
 
+		log.Info("Starting container...")
 		exitCode, err := client.RunContainer(agentCfg.Image, agentCfg.HarnessCommand, agentName, agentCfg.Mounts)
 		if err != nil {
 			return fmt.Errorf("failed to run container: %w", err)

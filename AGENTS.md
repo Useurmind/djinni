@@ -1,0 +1,1 @@
+Please do not change the .golangci.yml file to suppress problems, fix them instead in the code
