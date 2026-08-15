@@ -33,10 +33,6 @@ func CloneToTemp(sourceDir, baseDir, agentName, taskName string) (string, error)
 		return "", fmt.Errorf("failed to clone repository: %w", err)
 	}
 
-	// if err := SetPermissions(destDir); err != nil {
-	// 	return "", err
-	// }
-
 	return destDir, nil
 }
 
@@ -54,18 +50,6 @@ func CheckoutNewBranch(repoPath, taskName string) error {
 	}
 
 	log.Success(fmt.Sprintf("Created branch: %s", branchName))
-	return nil
-}
-
-func SetPermissions(path string) error {
-	// do not change x flag as that will influence git status of all files in the repo, which will cause issues with git diff and git status
-	permissions := "+rw"
-	log.Info(fmt.Sprintf("Setting permissions to %s for: %s", permissions, path))
-
-	if err := execCommand("chmod", []string{"-R", permissions, path}, ""); err != nil {
-		return fmt.Errorf("failed to set permissions: %w", err)
-	}
-
 	return nil
 }
 

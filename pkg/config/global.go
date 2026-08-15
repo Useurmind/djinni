@@ -8,7 +8,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func LoadAuthConfig() (*AuthConfig, error) {
+func LoadGlobalConfig() (*GlobalConfig, error) {
 	configDir, err := getUserConfigDir()
 	if err != nil {
 		return nil, err
@@ -19,12 +19,12 @@ func LoadAuthConfig() (*AuthConfig, error) {
 	data, err := os.ReadFile(authPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return &AuthConfig{}, nil
+			return &GlobalConfig{}, nil
 		}
 		return nil, err
 	}
 
-	var cfg AuthConfig
+	var cfg GlobalConfig
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, err
 	}
@@ -49,7 +49,7 @@ func getUserConfigDir() (string, error) {
 	return filepath.Join(u.HomeDir, ".config"), nil
 }
 
-func (c *AuthConfig) Validate() error {
+func (c *GlobalConfig) Validate() error {
 	for _, provider := range c.ModelProviders {
 		if err := provider.Validate(); err != nil {
 			return err

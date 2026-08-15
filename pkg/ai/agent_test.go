@@ -12,7 +12,7 @@ import (
 )
 
 func TestAgent_ExecutePrompt(t *testing.T) {
-	authCfg, err := config.LoadAuthConfig()
+	authCfg, err := config.LoadGlobalConfig()
 	require.NoError(t, err)
 
 	tests := []struct {

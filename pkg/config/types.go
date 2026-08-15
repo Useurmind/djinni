@@ -32,7 +32,7 @@ type ModelProvider struct {
 	Models  []Model `yaml:"models"`
 }
 
-type AuthConfig struct {
+type GlobalConfig struct {
 	ModelProviders []ModelProvider `yaml:"modelProviders"`
 }
 

@@ -232,7 +232,7 @@ func TestModelProvider_YAMLTags(t *testing.T) {
 }
 
 func TestAuthConfig_YAMLTags(t *testing.T) {
-	c := &AuthConfig{
+	c := &GlobalConfig{
 		ModelProviders: []ModelProvider{
 			{
 				Name:    "litellm",
@@ -291,17 +291,17 @@ func TestModelProvider_Validate(t *testing.T) {
 func TestAuthConfig_Validate(t *testing.T) {
 	tests := []struct {
 		name       string
-		authConfig *AuthConfig
+		authConfig *GlobalConfig
 		wantErr    bool
 	}{
 		{
 			name:       "empty providers",
-			authConfig: &AuthConfig{ModelProviders: []ModelProvider{}},
+			authConfig: &GlobalConfig{ModelProviders: []ModelProvider{}},
 			wantErr:    false,
 		},
 		{
 			name: "valid providers",
-			authConfig: &AuthConfig{
+			authConfig: &GlobalConfig{
 				ModelProviders: []ModelProvider{
 					{Name: "litellm", APIBase: "http://localhost:8000", Models: []Model{{ID: "model1"}}},
 				},
@@ -310,7 +310,7 @@ func TestAuthConfig_Validate(t *testing.T) {
 		},
 		{
 			name: "invalid provider",
-			authConfig: &AuthConfig{
+			authConfig: &GlobalConfig{
 				ModelProviders: []ModelProvider{
 					{Name: "", Models: []Model{{ID: "model1"}}},
 				},

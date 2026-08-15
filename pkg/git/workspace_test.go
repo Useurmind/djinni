@@ -37,25 +37,6 @@ func TestCloneToTemp(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, info.IsDir())
 }
-
-func TestSetPermissions(t *testing.T) {
-	tempDir := t.TempDir()
-	testDir := filepath.Join(tempDir, "test-perms")
-	require.NoError(t, os.MkdirAll(testDir, 0755))
-
-	filePath := filepath.Join(testDir, "test.txt")
-	require.NoError(t, os.WriteFile(filePath, []byte("test"), 0644))
-
-	err := SetPermissions(testDir)
-	require.NoError(t, err)
-
-	info, err := os.Stat(testDir)
-	require.NoError(t, err)
-
-	perms := info.Mode().Perm()
-	assert.Equal(t, os.FileMode(0777), perms)
-}
-
 func TestGetRepoName(t *testing.T) {
 	tempDir := t.TempDir()
 	repoPath := filepath.Join(tempDir, "my-repo")

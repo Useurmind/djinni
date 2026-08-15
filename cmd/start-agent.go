@@ -71,18 +71,16 @@ var startAgentCmd = &cobra.Command{
 				return fmt.Errorf("failed to checkout branch: %w", err)
 			}
 
-			repoName := filepath.Base(cwd)
-			mountPath := filepath.Join("/workspace", fmt.Sprintf("%s-%s", repoName, taskName))
-			workspaceMount := config.Mount{
+			mountPath := filepath.Join("/workspace", fmt.Sprintf("%s-%s", filepath.Base(cwd), taskName))
+			agentCfg.Mounts = append(agentCfg.Mounts, config.Mount{
 				Source:      workspacePath,
 				Destination: mountPath,
-			}
-			agentCfg.Mounts = append(agentCfg.Mounts, workspaceMount)
+			})
 
 			commands = &docker.ContainerCommands{
 				PreCommands: []string{
-					fmt.Sprintf("cd /workspace/%s-%s", repoName, taskName),
-					fmt.Sprintf("git config --global --add safe.directory /workspace/%s-%s", repoName, taskName),
+					fmt.Sprintf("cd /workspace/%s-%s", filepath.Base(cwd), taskName),
+					fmt.Sprintf("git config --global --add safe.directory /workspace/%s-%s", filepath.Base(cwd), taskName),
 				},
 			}
 
@@ -94,6 +92,14 @@ var startAgentCmd = &cobra.Command{
 		exitCode, err := client.RunContainer(image, agentCfg.HarnessCommand, agentName, agentCfg.Mounts, commands)
 		if err != nil {
 			return fmt.Errorf("failed to run container: %w", err)
+		}
+
+		mountSources := git.GetMountPaths(agentCfg.Mounts)
+		if len(mountSources) > 0 {
+			log.Info("Restoring file ownership after container exit...")
+			if err := git.RestoreOwnership(mountSources); err != nil {
+				log.Error(fmt.Sprintf("Failed to restore ownership: %v", err))
+			}
 		}
 
 		if workspacePath != "" {
@@ -111,6 +117,11 @@ var startAgentCmd = &cobra.Command{
 				} else {
 					log.Info(fmt.Sprintf("Detected %d changed files", len(changedFiles)))
 
+					globalCfg, err := config.LoadGlobalConfig()
+					if err != nil {
+						log.Error(fmt.Sprintf("Failed to load global config: %v", err))
+					}
+
 					defaultModel := ""
 					if agentCfg.DefaultModel != "" {
 						defaultModel = agentCfg.DefaultModel
@@ -121,6 +132,8 @@ var startAgentCmd = &cobra.Command{
 					aiAgent := &ai.Agent{
 						WorkingDir: workspacePath,
 						ReadPaths:  []string{workspacePath},
+						Provider:   &globalCfg.ModelProviders[0],
+						ModelID:    defaultModel,
 					}
 
 					if defaultModel != "" {
@@ -153,5 +166,7 @@ func init() {
 	rootCmd.AddCommand(startAgentCmd)
 	startAgentCmd.Flags().StringP("config", "c", "", "Path to config file (default: .djinni.yml in current directory)")
 	startAgentCmd.Flags().StringP("task", "t", "", "Task name for workspace mount (creates feature/<taskname> branch)")
-	startAgentCmd.MarkFlagRequired("task")
+	if err := startAgentCmd.MarkFlagRequired("task"); err != nil {
+		log.Error(fmt.Sprintf("Failed to mark flag required: %v", err))
+	}
 }
