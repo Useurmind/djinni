@@ -67,7 +67,7 @@ func (c *Config) Validate() error {
 			return fmt.Errorf("agent '%s': harness_command is required", name)
 		}
 		if agent.GitWorkspace.BaseDirectory == "" {
-			agent.GitWorkspace.BaseDirectory = fmt.Sprintf("/tmp/%s", name)
+			agent.GitWorkspace.BaseDirectory = "/tmp/djinni"
 		}
 		if agent.SyncApproach != "" && agent.SyncApproach != "branch_sync" && agent.SyncApproach != "git_patch" {
 			return fmt.Errorf("agent '%s': sync_approach must be 'branch_sync' or 'git_patch'", name)

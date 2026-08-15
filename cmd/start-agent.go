@@ -143,9 +143,6 @@ func setupWorkspace(agentCfg *config.AgentConfig, cwd, agentName, taskName strin
 		log.Info("Setting up git workspace mount...")
 
 		baseDir := agentCfg.GitWorkspace.BaseDirectory
-		if baseDir == "" {
-			baseDir = "/tmp/djinni"
-		}
 
 		var err error
 		workspacePath, err = git.CloneToTemp(cwd, baseDir, agentName, taskName)
