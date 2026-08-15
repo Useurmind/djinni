@@ -1,11 +1,12 @@
+default_model: qwen-qwen3-coder-next-fp8
 agents:
   local-agent:
     harness_command:
       - bash
     containerfile: ./Containerfile
     mounts:
-      - source: ./specs
-        destination: /app/specs
+      - source: /home/jgruen/.config/opencode
+        destination: /home/jgruen/agent/.config/opencode
   registry-agent:
     harness_command:
       - python

@@ -16,7 +16,7 @@ vet:
 	go vet ./...
 
 lint:
-	golangci-lint run ./...
+	golangci-lint run ./... --fix
 
 run: build
 	./$(BINARY)

@@ -110,9 +110,9 @@ func (c *Client) runContainerWithCommands(image string, cmd []string, name strin
 	for _, m := range mounts {
 		var mountStr string
 		if m.ReadOnly {
-			mountStr = fmt.Sprintf("%s:%s:zro", m.Source, m.Destination)
+			mountStr = fmt.Sprintf("%s:%s:Z,RO,U", m.Source, m.Destination)
 		} else {
-			mountStr = fmt.Sprintf("%s:%s:z", m.Source, m.Destination)
+			mountStr = fmt.Sprintf("%s:%s:Z,U", m.Source, m.Destination)
 		}
 		args = append(args, "-v", mountStr)
 	}

@@ -24,13 +24,14 @@ func TestCloneToTemp(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "README.md"), []byte("# Test"), 0644))
 
 	baseDir := filepath.Join(tempDir, "bases")
+	agentName := "test-agent"
 	taskName := "test-task"
 
-	destDir, err := CloneToTemp(sourceDir, baseDir, taskName)
+	destDir, err := CloneToTemp(sourceDir, baseDir, agentName, taskName)
 	require.NoError(t, err)
 
 	assert.NotEmpty(t, destDir)
-	assert.Contains(t, destDir, "test-repo-test-task")
+	assert.Contains(t, destDir, "test-repo/test-agent/test-task")
 
 	info, err := os.Stat(destDir)
 	require.NoError(t, err)

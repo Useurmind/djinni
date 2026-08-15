@@ -10,13 +10,13 @@ import (
 	"github.com/useurmind/djinni/pkg/utils"
 )
 
-func CloneToTemp(sourceDir, baseDir, taskName string) (string, error) {
+func CloneToTemp(sourceDir, baseDir, agentName, taskName string) (string, error) {
 	repoName, err := getRepoName(sourceDir)
 	if err != nil {
 		return "", err
 	}
 
-	destDir := filepath.Join(baseDir, fmt.Sprintf("%s-%s", repoName, taskName))
+	destDir := filepath.Join(baseDir, repoName, agentName, taskName)
 
 	if _, err := os.Stat(destDir); err == nil {
 		log.Info(fmt.Sprintf("Using existing workspace: %s", destDir))
@@ -25,17 +25,17 @@ func CloneToTemp(sourceDir, baseDir, taskName string) (string, error) {
 
 	log.Info(fmt.Sprintf("Cloning repository from %s to %s", sourceDir, destDir))
 
-	if err := os.MkdirAll(baseDir, 0755); err != nil {
-		return "", fmt.Errorf("failed to create base directory: %w", err)
+	if err := os.MkdirAll(destDir, 0755); err != nil {
+		return "", fmt.Errorf("failed to create destination directory: %w", err)
 	}
 
 	if err := execCommand("git", []string{"clone", sourceDir, destDir}, sourceDir); err != nil {
 		return "", fmt.Errorf("failed to clone repository: %w", err)
 	}
 
-	if err := SetPermissions(destDir); err != nil {
-		return "", err
-	}
+	// if err := SetPermissions(destDir); err != nil {
+	// 	return "", err
+	// }
 
 	return destDir, nil
 }
@@ -58,9 +58,11 @@ func CheckoutNewBranch(repoPath, taskName string) error {
 }
 
 func SetPermissions(path string) error {
-	log.Info(fmt.Sprintf("Setting permissions to 777 for: %s", path))
+	// do not change x flag as that will influence git status of all files in the repo, which will cause issues with git diff and git status
+	permissions := "+rw"
+	log.Info(fmt.Sprintf("Setting permissions to %s for: %s", permissions, path))
 
-	if err := execCommand("chmod", []string{"-R", "777", path}, ""); err != nil {
+	if err := execCommand("chmod", []string{"-R", permissions, path}, ""); err != nil {
 		return fmt.Errorf("failed to set permissions: %w", err)
 	}
 

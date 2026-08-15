@@ -3,12 +3,12 @@ package config
 import "fmt"
 
 type AgentConfig struct {
-	HarnessCommand    []string         `yaml:"harness_command"`
-	Image             string           `yaml:"image"`
-	Containerfile     string           `yaml:"containerfile"`
-	Mounts            []Mount          `yaml:"mounts"`
-	DefaultModel      string           `yaml:"default_model"`
-	GitWorkspace      GitWorkspaceMount `yaml:"git_workspace"`
+	HarnessCommand []string          `yaml:"harness_command"`
+	Image          string            `yaml:"image"`
+	Containerfile  string            `yaml:"containerfile"`
+	Mounts         []Mount           `yaml:"mounts"`
+	DefaultModel   string            `yaml:"default_model"`
+	GitWorkspace   GitWorkspaceMount `yaml:"git_workspace"`
 }
 
 type Mount struct {

@@ -23,8 +23,8 @@ func TestAgent_ExecutePrompt(t *testing.T) {
 		assertions func(t *testing.T, result string, err error)
 	}{
 		{
-			name: "simple prompt with qwen model",
-			provider: &authCfg.ModelProviders[0],
+			name:      "simple prompt with qwen model",
+			provider:  &authCfg.ModelProviders[0],
 			readPaths: []string{os.TempDir()},
 			prompt:    "Respond with 'Hello World'",
 			assertions: func(t *testing.T, result string, err error) {

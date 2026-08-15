@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
+	"github.com/useurmind/djinni/pkg/ai"
 	"github.com/useurmind/djinni/pkg/config"
 	"github.com/useurmind/djinni/pkg/docker"
 	"github.com/useurmind/djinni/pkg/git"
@@ -57,10 +58,10 @@ var startAgentCmd = &cobra.Command{
 
 			baseDir := agentCfg.GitWorkspace.BaseDirectory
 			if baseDir == "" {
-				baseDir = fmt.Sprintf("/tmp/%s", agentName)
+				baseDir = "/tmp/djinni"
 			}
 
-			workspacePath, err = git.CloneToTemp(cwd, baseDir, taskName)
+			workspacePath, err = git.CloneToTemp(cwd, baseDir, agentName, taskName)
 			if err != nil {
 				return fmt.Errorf("failed to clone workspace: %w", err)
 			}
@@ -79,10 +80,10 @@ var startAgentCmd = &cobra.Command{
 			agentCfg.Mounts = append(agentCfg.Mounts, workspaceMount)
 
 			commands = &docker.ContainerCommands{
-			PreCommands: []string{
-				fmt.Sprintf("cd /workspace/%s-%s", repoName, taskName),
-				fmt.Sprintf("git config --global --add safe.directory /workspace/%s-%s", repoName, taskName),
-			},
+				PreCommands: []string{
+					fmt.Sprintf("cd /workspace/%s-%s", repoName, taskName),
+					fmt.Sprintf("git config --global --add safe.directory /workspace/%s-%s", repoName, taskName),
+				},
 			}
 
 			defer git.CleanupWorkspace(workspacePath)
@@ -93,6 +94,54 @@ var startAgentCmd = &cobra.Command{
 		exitCode, err := client.RunContainer(image, agentCfg.HarnessCommand, agentName, agentCfg.Mounts, commands)
 		if err != nil {
 			return fmt.Errorf("failed to run container: %w", err)
+		}
+
+		if workspacePath != "" {
+			log.Info("Checking for changes after container exit...")
+
+			clean, err := git.IsRepositoryClean(workspacePath)
+			if err != nil {
+				log.Error(fmt.Sprintf("Failed to check repository status: %v", err))
+			} else if clean {
+				log.Info("No changes detected, skipping commit/push")
+			} else {
+				changedFiles, err := git.GetChangedFiles(workspacePath)
+				if err != nil {
+					log.Error(fmt.Sprintf("Failed to get changed files: %v", err))
+				} else {
+					log.Info(fmt.Sprintf("Detected %d changed files", len(changedFiles)))
+
+					defaultModel := ""
+					if agentCfg.DefaultModel != "" {
+						defaultModel = agentCfg.DefaultModel
+					} else {
+						defaultModel = cfg.DefaultModel
+					}
+
+					aiAgent := &ai.Agent{
+						WorkingDir: workspacePath,
+						ReadPaths:  []string{workspacePath},
+					}
+
+					if defaultModel != "" {
+						aiAgent.ModelID = defaultModel
+					}
+
+					commitMsg, err := aiAgent.Execute()
+					if err != nil {
+						log.Error(fmt.Sprintf("Failed to generate commit message: %v", err))
+					} else {
+						if err := git.CommitAll(workspacePath, commitMsg); err != nil {
+							log.Error(fmt.Sprintf("Failed to commit: %v", err))
+						} else {
+							branchName := fmt.Sprintf("feature/%s", taskName)
+							if err := git.PushBranch(workspacePath, branchName); err != nil {
+								log.Error(fmt.Sprintf("Failed to push branch: %v", err))
+							}
+						}
+					}
+				}
+			}
 		}
 
 		os.Exit(exitCode)
