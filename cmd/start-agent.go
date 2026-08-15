@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/useurmind/djinni/pkg/ai"
@@ -43,10 +42,6 @@ var startAgentCmd = &cobra.Command{
 		cwd, err := os.Getwd()
 		if err != nil {
 			return fmt.Errorf("failed to get current directory: %w", err)
-		}
-
-		if err := commitUncommittedChanges(cwd, configPath); err != nil {
-			return err
 		}
 
 		agentCfg, ok := cfg.Agents[agentName]
@@ -166,64 +161,66 @@ var startAgentCmd = &cobra.Command{
 				} else {
 					log.Info(fmt.Sprintf("Detected %d changed files", len(changedFiles)))
 
-					log.Info("Staging all changes...")
-					if err := git.AddFiles(workspacePath); err != nil {
-						log.Error(fmt.Sprintf("Failed to stage files: %v", err))
+					syncApproach := "branch_sync"
+					if agentCfg.SyncApproach != "" {
+						syncApproach = agentCfg.SyncApproach
 					}
 
-					globalCfg, err := config.LoadGlobalConfig()
-					if err != nil {
-						log.Error(fmt.Sprintf("Failed to load global config: %v", err))
+					if syncApproach == "git_patch" {
+						patchDir := filepath.Join(filepath.Dir(workspacePath), "patches")
+						if err := git.CreatePatch(workspacePath, fmt.Sprintf("feature/%s", taskName), patchDir); err != nil {
+							log.Error(fmt.Sprintf("Failed to create patch: %v", err))
+						} else {
+							patches, _ := filepath.Glob(filepath.Join(patchDir, "*.patch"))
+							if len(patches) > 0 {
+								if err := git.ApplyPatch(cwd, patches[0]); err != nil {
+									log.Error(fmt.Sprintf("Failed to apply patch: %v", err))
+								}
+							}
+						}
 					} else {
-						defaultModel := ""
-						if agentCfg.DefaultModel != "" {
-							defaultModel = agentCfg.DefaultModel
-						} else {
-							defaultModel = cfg.DefaultModel
+						log.Info("Staging all changes...")
+						if err := git.AddFiles(workspacePath); err != nil {
+							log.Error(fmt.Sprintf("Failed to stage files: %v", err))
 						}
 
-						aiAgent := &ai.Agent{
-							WorkingDir: workspacePath,
-							ReadPaths:  []string{workspacePath},
-							Provider:   &globalCfg.ModelProviders[0],
-							ModelID:    defaultModel,
-						}
-
-						if defaultModel != "" {
-							aiAgent.ModelID = defaultModel
-						}
-
-						commitMsg, err := aiAgent.Execute()
+						globalCfg, err := config.LoadGlobalConfig()
 						if err != nil {
-							log.Error(fmt.Sprintf("Failed to generate commit message: %v", err))
+							log.Error(fmt.Sprintf("Failed to load global config: %v", err))
 						} else {
-							syncApproach := "branch_sync"
-							if agentCfg.SyncApproach != "" {
-								syncApproach = agentCfg.SyncApproach
+							defaultModel := ""
+							if agentCfg.DefaultModel != "" {
+								defaultModel = agentCfg.DefaultModel
+							} else {
+								defaultModel = cfg.DefaultModel
 							}
 
-							if err := git.CommitAll(workspacePath, commitMsg); err != nil {
-								log.Error(fmt.Sprintf("Failed to commit: %v", err))
-							} else if syncApproach == "git_patch" {
-								patchDir := filepath.Join(filepath.Dir(workspacePath), "patches")
-								if err := git.CreatePatch(workspacePath, fmt.Sprintf("feature/%s", taskName), patchDir); err != nil {
-									log.Error(fmt.Sprintf("Failed to create patch: %v", err))
-								} else {
-									patches, _ := filepath.Glob(filepath.Join(patchDir, "*.patch"))
-									if len(patches) > 0 {
-										if err := git.ApplyPatch(cwd, patches[0]); err != nil {
-											log.Error(fmt.Sprintf("Failed to apply patch: %v", err))
-										}
-									}
-								}
+							aiAgent := &ai.Agent{
+								WorkingDir: workspacePath,
+								ReadPaths:  []string{workspacePath},
+								Provider:   &globalCfg.ModelProviders[0],
+								ModelID:    defaultModel,
+							}
+
+							if defaultModel != "" {
+								aiAgent.ModelID = defaultModel
+							}
+
+							commitMsg, err := aiAgent.Execute()
+							if err != nil {
+								log.Error(fmt.Sprintf("Failed to generate commit message: %v", err))
 							} else {
-								branchName := fmt.Sprintf("feature/%s", taskName)
-								if err := git.PushBranch(workspacePath, branchName); err != nil {
-									log.Error(fmt.Sprintf("Failed to push branch: %v", err))
-								} else if agentCfg.AutomergeAgentBranch {
-									log.Info(fmt.Sprintf("Merging branch %s into current branch", branchName))
-									if err := execCommand("git", []string{"merge", branchName}, cwd); err != nil {
-										log.Error(fmt.Sprintf("Failed to merge branch: %v", err))
+								if err := git.CommitAll(workspacePath, commitMsg); err != nil {
+									log.Error(fmt.Sprintf("Failed to commit: %v", err))
+								} else {
+									branchName := fmt.Sprintf("feature/%s", taskName)
+									if err := git.PushBranch(workspacePath, branchName); err != nil {
+										log.Error(fmt.Sprintf("Failed to push branch: %v", err))
+									} else if agentCfg.AutomergeAgentBranch {
+										log.Info(fmt.Sprintf("Merging branch %s into current branch", branchName))
+										if err := execCommand("git", []string{"merge", branchName}, cwd); err != nil {
+											log.Error(fmt.Sprintf("Failed to merge branch: %v", err))
+										}
 									}
 								}
 							}
@@ -236,66 +233,6 @@ var startAgentCmd = &cobra.Command{
 		os.Exit(exitCode)
 		return nil
 	},
-}
-
-func commitUncommittedChanges(cwd, configPath string) error {
-	mode, msg, err := git.PromptCommitChanges(cwd, configPath)
-	if err != nil {
-		return fmt.Errorf("failed to prompt for commit: %w", err)
-	}
-
-	if mode == git.CommitModeNone {
-		return nil
-	}
-
-	if mode == git.CommitModeAI {
-		globalCfg, err := config.LoadGlobalConfig()
-		if err != nil {
-			return fmt.Errorf("failed to load global config: %w", err)
-		}
-
-		if len(globalCfg.ModelProviders) == 0 {
-			return fmt.Errorf("no model providers configured in global config")
-		}
-
-		cfg, err := config.LoadConfig(configPath)
-		if err != nil {
-			return fmt.Errorf("failed to load config: %w", err)
-		}
-
-		defaultModel := ""
-		if cfg.DefaultModel != "" {
-			defaultModel = cfg.DefaultModel
-		}
-
-		aiAgent := &ai.Agent{
-			WorkingDir: cwd,
-			ReadPaths:  []string{cwd},
-			Provider:   &globalCfg.ModelProviders[0],
-			ModelID:    defaultModel,
-		}
-
-		msg, err = aiAgent.Execute()
-		if err != nil {
-			return fmt.Errorf("failed to generate commit message: %w", err)
-		}
-		msg = strings.TrimSpace(msg)
-	} else if mode == git.CommitModeManual && msg == "" {
-		return fmt.Errorf("manual commit message is empty")
-	}
-
-	log.Info("Staging all changes...")
-	if err := git.AddFiles(cwd); err != nil {
-		return fmt.Errorf("failed to stage files: %w", err)
-	}
-
-	log.Info(fmt.Sprintf("Committing changes with message: %s", msg))
-	if err := git.CommitAll(cwd, msg); err != nil {
-		return fmt.Errorf("failed to commit: %w", err)
-	}
-
-	log.Success("Changes committed successfully.")
-	return nil
 }
 
 func init() {

@@ -102,6 +102,17 @@ func TestApplyPatch(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.FileExists(t, filepath.Join(targetDir, "new_file.txt"))
+
+	statusOutput, err := execCommandOutput("git", []string{"diff", "--name-only"}, targetDir)
+	require.NoError(t, err)
+	assert.Empty(t, statusOutput, "No staged changes should exist after ApplyPatch (user needs to staging/commit)")
+}
+
+func execCommandOutput(name string, args []string, workdir string) (string, error) {
+	cmd := exec.Command(name, args...)
+	cmd.Dir = workdir
+	output, err := cmd.CombinedOutput()
+	return string(output), err
 }
 
 func TestCreatePatchAndApplyIntegration(t *testing.T) {
@@ -160,4 +171,8 @@ func TestCreatePatchAndApplyIntegration(t *testing.T) {
 
 	assert.FileExists(t, filepath.Join(targetDir, "file1.txt"))
 	assert.FileExists(t, filepath.Join(targetDir, "file2.txt"))
+
+	statusOutput, err := execCommandOutput("git", []string{"diff", "--name-only"}, targetDir)
+	require.NoError(t, err)
+	assert.Empty(t, statusOutput, "No staged changes should exist after ApplyPatch (user needs to staging/commit)")
 }

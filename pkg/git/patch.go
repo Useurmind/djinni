@@ -37,7 +37,9 @@ func CreatePatch(repoPath, branchName, patchDir string) error {
 func ApplyPatch(repoPath, patchPath string) error {
 	log.Info(fmt.Sprintf("Applying patch %s to %s", patchPath, repoPath))
 
-	cmd := exec.Command("git", "am", "-3", patchPath)
+	args := []string{"apply", "-p1", patchPath}
+
+	cmd := exec.Command("git", args...)
 	cmd.Dir = repoPath
 	output, err := cmd.CombinedOutput()
 	if err != nil {
