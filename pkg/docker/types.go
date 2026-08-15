@@ -5,3 +5,8 @@ type Mount struct {
 	Destination string
 	ReadOnly    bool
 }
+
+type FilesToCopy struct {
+	Source      string
+	Destination string
+}

@@ -77,7 +77,26 @@ var startAgentCmd = &cobra.Command{
 				Destination: mountPath,
 			})
 
+			// Get user's home directory and add gitconfig to files to copy
+			homeDir, err := os.UserHomeDir()
+			if err != nil {
+				return fmt.Errorf("failed to get user home directory: %w", err)
+			}
+
+			gitconfigPath := filepath.Join(homeDir, ".gitconfig")
+			if _, err := os.Stat(gitconfigPath); os.IsNotExist(err) {
+				return fmt.Errorf("gitconfig file not found at %s", gitconfigPath)
+			}
+
+			filesToCopy := []docker.FilesToCopy{
+				{
+					Source:      gitconfigPath,
+					Destination: "/home/agent/.gitconfig",
+				},
+			}
+
 			commands = &docker.ContainerCommands{
+				FilesToCopy: filesToCopy,
 				PreCommands: []string{
 					fmt.Sprintf("cd /workspace/%s-%s", filepath.Base(cwd), taskName),
 					fmt.Sprintf("git config --global --add safe.directory /workspace/%s-%s", filepath.Base(cwd), taskName),

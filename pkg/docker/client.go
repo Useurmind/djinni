@@ -33,7 +33,7 @@ func (c *Client) RunContainer(image string, cmd []string, name string, mounts []
 		commands = &ContainerCommands{}
 	}
 
-	if len(commands.PreCommands) == 0 && len(commands.PostCommands) == 0 {
+	if len(commands.PreCommands) == 0 && len(commands.PostCommands) == 0 && len(commands.FilesToCopy) == 0 {
 		return c.runContainerDirect(image, cmd, name, mounts)
 	}
 
@@ -105,6 +105,7 @@ func (c *Client) runCommand(args []string) (int, error) {
 }
 
 func (c *Client) runContainerWithCommands(image string, cmd []string, name string, mounts []config.Mount, commands *ContainerCommands) (int, error) {
+	entrypoint := c.generateEntrypoint(cmd, commands)
 	args := []string{"run", "--rm", "-it", "--network", "bridge", "--name", name}
 
 	for _, m := range mounts {
@@ -117,12 +118,35 @@ func (c *Client) runContainerWithCommands(image string, cmd []string, name strin
 		args = append(args, "-v", mountStr)
 	}
 
-	entrypoint := c.generateEntrypoint(cmd, commands)
-	args = append(args, "--entrypoint", "/bin/sh")
+	args = append(args, "--entrypoint", "/bin/bash")
 	args = append(args, image)
 	args = append(args, "-c", entrypoint)
 
 	log.Info(fmt.Sprintf("Running: %s %s", c.Binary, strings.Join(args, " ")))
+
+	if len(commands.FilesToCopy) > 0 {
+		copyErrChan := CopyFilesAsync(name, commands.FilesToCopy, c)
+		cmd := exec.Command(c.Binary, args...)
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		err := cmd.Run()
+		if err != nil {
+			exitErr, ok := err.(*exec.ExitError)
+			if ok {
+				<-copyErrChan
+				return exitErr.ExitCode(), nil
+			}
+			<-copyErrChan
+			return 1, fmt.Errorf("%s %s: %w", c.Binary, strings.Join(args, " "), err)
+		}
+		err = <-copyErrChan
+		if err != nil {
+			return 1, err
+		}
+		return 0, nil
+	}
+
 	return c.runCommand(args)
 }
 
@@ -130,6 +154,14 @@ func (c *Client) generateEntrypoint(harnessCmd []string, commands *ContainerComm
 	var builder strings.Builder
 
 	builder.WriteString("set -e\n")
+
+	if len(commands.FilesToCopy) > 0 {
+		builder.WriteString("echo 'Waiting for files to be copied...'\n")
+		builder.WriteString("while [ ! -e \"/home/agent/.copydone\" ]; do\n")
+		builder.WriteString("  sleep 0.5\n")
+		builder.WriteString("done\n")
+		builder.WriteString("echo 'Files copied successfully'\n")
+	}
 
 	for _, preCmd := range commands.PreCommands {
 		builder.WriteString(preCmd)

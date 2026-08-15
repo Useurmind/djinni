@@ -1,6 +1,6 @@
 module github.com/useurmind/djinni
 
-go 1.25.0
+go 1.26.6
 
 require (
 	github.com/fatih/color v1.19.0

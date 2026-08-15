@@ -1,4 +1,4 @@
-.PHONY: build test vet lint run clean deadcode
+.PHONY: build test vet lint run clean deadcode check
 
 BUILD_DIR = ./bin
 BINARY = $(BUILD_DIR)/djinni
@@ -20,6 +20,8 @@ vet:
 
 lint:
 	golangci-lint run ./... --fix
+
+check: build vet lint test deadcode
 
 run: build
 	./$(BINARY)
