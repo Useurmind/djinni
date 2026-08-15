@@ -4,6 +4,7 @@ Use the available ai agent to generate an automatic commit message for the chang
 
 Detailed rundown:
 - container exits
+- Ownership of all mounts is reverted to current user via `podman unshare chown 0:0`
 - AI agent looks at the changed files and creates a commit message
 - all files are added and committed using the generated commit message
 - workspace repo feature branch is pushed to original repo on the machine

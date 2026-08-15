@@ -73,10 +73,10 @@ func (t *GitChangedFilesTool) Call(ctx context.Context, input string) (string, e
 		return "", fmt.Errorf("failed to run git status in '%s': %w", t.workingDir, err)
 	}
 
-	return t.parsePorcelainOutput(string(output)), nil
+	return t.parsePorcelainOutputWithDiffs(string(output)), nil
 }
 
-func (t *GitChangedFilesTool) parsePorcelainOutput(output string) string {
+func (t *GitChangedFilesTool) parsePorcelainOutputWithDiffs(output string) string {
 	lines := strings.Split(output, "\n")
 	var results []string
 
@@ -93,7 +93,14 @@ func (t *GitChangedFilesTool) parsePorcelainOutput(output string) string {
 		filePath := strings.TrimSpace(line[2:])
 
 		statusStr := t.parseStatus(status)
-		results = append(results, fmt.Sprintf("%s: %s", statusStr, filePath))
+
+		diff, _ := t.getFileDiff(filePath)
+
+		result := fmt.Sprintf("- %s %s", filePath, statusStr)
+		if diff != "" {
+			result += "\n" + diff
+		}
+		results = append(results, result)
 	}
 
 	if len(results) == 0 {
@@ -103,21 +110,37 @@ func (t *GitChangedFilesTool) parsePorcelainOutput(output string) string {
 	return strings.Join(results, "\n")
 }
 
+func (t *GitChangedFilesTool) getFileDiff(filePath string) (string, error) {
+	cmd := exec.Command("git", "diff", "HEAD", "--", filePath)
+	cmd.Dir = t.workingDir
+
+	output, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+
+	return string(output), nil
+}
+
 func (t *GitChangedFilesTool) parseStatus(status string) string {
-	switch status {
-	case "M ":
+	status = strings.TrimSpace(status)
+	if len(status) == 0 {
+		return "unknown()"
+	}
+	switch status[0] {
+	case 'M':
 		return "modified"
-	case "A ":
+	case 'A':
 		return "added"
-	case "D ":
+	case 'D':
 		return "deleted"
-	case "R ":
+	case 'R':
 		return "renamed"
-	case "C ":
+	case 'C':
 		return "copied"
-	case "U ":
+	case 'U':
 		return "unmerged"
-	case "??":
+	case '?':
 		return "untracked"
 	default:
 		return fmt.Sprintf("unknown(%s)", status)

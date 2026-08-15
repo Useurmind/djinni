@@ -4,17 +4,17 @@ import (
 	"github.com/fatih/color"
 )
 
-func Info(msg string) {
+func Info(format string, a ...interface{}) {
 	cyan := color.New(color.FgCyan)
-	_, _ = cyan.Println("[INFO]", msg)
+	_, _ = cyan.Printf("[INFO] "+format+"\n", a...)
 }
 
-func Success(msg string) {
+func Success(format string, a ...interface{}) {
 	green := color.New(color.FgGreen)
-	_, _ = green.Println("[SUCCESS]", msg)
+	_, _ = green.Printf("[SUCCESS] "+format+"\n", a...)
 }
 
-func Error(msg string) {
+func Error(format string, a ...interface{}) {
 	red := color.New(color.FgRed)
-	_, _ = red.Println("[ERROR]", msg)
+	_, _ = red.Printf("[ERROR] "+format+"\n", a...)
 }

@@ -40,25 +40,25 @@ exit 128
 		containsPattern string
 	}{
 		{
-			name:            "parse modified files",
+			name:            "parse modified files with diff format",
 			repoDir:         tmpDir,
 			mockStatus:      " M file1.go\nM  file2.go\nA  file3.go\n",
 			wantErr:         false,
-			containsPattern: "modified",
+			containsPattern: "- file1.go modified",
 		},
 		{
 			name:            "parse untracked files",
 			repoDir:         tmpDir,
 			mockStatus:      "?? newfile.go\n",
 			wantErr:         false,
-			containsPattern: "untracked",
+			containsPattern: "- newfile.go untracked",
 		},
 		{
 			name:            "parse all status types",
 			repoDir:         tmpDir,
 			mockStatus:      "M  modified.go\nA  added.go\nD  deleted.go\nR  renamed.go\nC  copied.go\nU  unmerged.go\n?? untracked.go\n",
 			wantErr:         false,
-			containsPattern: "modified",
+			containsPattern: "- modified.go modified",
 		},
 		{
 			name:            "empty status",

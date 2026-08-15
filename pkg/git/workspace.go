@@ -83,6 +83,17 @@ func getRepoName(dir string) (string, error) {
 	return filepath.Base(absDir), nil
 }
 
+func AddFiles(repoPath string) error {
+	log.Info(fmt.Sprintf("Staging all changes in %s", repoPath))
+
+	if err := execCommand("git", []string{"add", "."}, repoPath); err != nil {
+		return fmt.Errorf("failed to stage files: %w", err)
+	}
+
+	log.Success(fmt.Sprintf("Staged all changes in %s", repoPath))
+	return nil
+}
+
 func execCommand(name string, args []string, workdir string) error {
 	if err := utils.ExecCommand(name, args, workdir); err != nil {
 		return err

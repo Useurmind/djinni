@@ -117,39 +117,44 @@ var startAgentCmd = &cobra.Command{
 				} else {
 					log.Info(fmt.Sprintf("Detected %d changed files", len(changedFiles)))
 
+					log.Info("Staging all changes...")
+					if err := git.AddFiles(workspacePath); err != nil {
+						log.Error(fmt.Sprintf("Failed to stage files: %v", err))
+					}
+
 					globalCfg, err := config.LoadGlobalConfig()
 					if err != nil {
 						log.Error(fmt.Sprintf("Failed to load global config: %v", err))
-					}
-
-					defaultModel := ""
-					if agentCfg.DefaultModel != "" {
-						defaultModel = agentCfg.DefaultModel
 					} else {
-						defaultModel = cfg.DefaultModel
-					}
-
-					aiAgent := &ai.Agent{
-						WorkingDir: workspacePath,
-						ReadPaths:  []string{workspacePath},
-						Provider:   &globalCfg.ModelProviders[0],
-						ModelID:    defaultModel,
-					}
-
-					if defaultModel != "" {
-						aiAgent.ModelID = defaultModel
-					}
-
-					commitMsg, err := aiAgent.Execute()
-					if err != nil {
-						log.Error(fmt.Sprintf("Failed to generate commit message: %v", err))
-					} else {
-						if err := git.CommitAll(workspacePath, commitMsg); err != nil {
-							log.Error(fmt.Sprintf("Failed to commit: %v", err))
+						defaultModel := ""
+						if agentCfg.DefaultModel != "" {
+							defaultModel = agentCfg.DefaultModel
 						} else {
-							branchName := fmt.Sprintf("feature/%s", taskName)
-							if err := git.PushBranch(workspacePath, branchName); err != nil {
-								log.Error(fmt.Sprintf("Failed to push branch: %v", err))
+							defaultModel = cfg.DefaultModel
+						}
+
+						aiAgent := &ai.Agent{
+							WorkingDir: workspacePath,
+							ReadPaths:  []string{workspacePath},
+							Provider:   &globalCfg.ModelProviders[0],
+							ModelID:    defaultModel,
+						}
+
+						if defaultModel != "" {
+							aiAgent.ModelID = defaultModel
+						}
+
+						commitMsg, err := aiAgent.Execute()
+						if err != nil {
+							log.Error(fmt.Sprintf("Failed to generate commit message: %v", err))
+						} else {
+							if err := git.CommitAll(workspacePath, commitMsg); err != nil {
+								log.Error(fmt.Sprintf("Failed to commit: %v", err))
+							} else {
+								branchName := fmt.Sprintf("feature/%s", taskName)
+								if err := git.PushBranch(workspacePath, branchName); err != nil {
+									log.Error(fmt.Sprintf("Failed to push branch: %v", err))
+								}
 							}
 						}
 					}
