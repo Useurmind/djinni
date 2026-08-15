@@ -152,7 +152,7 @@ func TestRunContainer(t *testing.T) {
 			defer os.Setenv("PATH", oldPath)
 			os.Setenv("PATH", tmpDir+string(os.PathListSeparator)+oldPath)
 
-			_, err := client.RunContainer("test-image", []string{"echo", "test"}, "test-container", tt.mounts)
+			_, err := client.RunContainer("test-image", []string{"echo", "test"}, "test-container", tt.mounts, nil)
 			if err != nil {
 				t.Errorf("RunContainer() error = %v", err)
 			}

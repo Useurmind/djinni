@@ -47,6 +47,7 @@ var startAgentCmd = &cobra.Command{
 		log.Info(fmt.Sprintf("Using image: %s", image))
 
 		var workspacePath string
+		var commands *docker.ContainerCommands
 		if taskName != "" {
 			log.Info("Setting up git workspace mount...")
 			cwd, err := os.Getwd()
@@ -77,12 +78,18 @@ var startAgentCmd = &cobra.Command{
 			}
 			agentCfg.Mounts = append(agentCfg.Mounts, workspaceMount)
 
+			commands = &docker.ContainerCommands{
+				PreCommands: []string{
+					fmt.Sprintf("git config --global --add safe.directory /workspace/%s-%s", repoName, taskName),
+				},
+			}
+
 			defer git.CleanupWorkspace(workspacePath)
 		} else if taskName != "" && agentCfg.GitWorkspace.BaseDirectory == "" {
 			return fmt.Errorf("git_workspace not configured for agent '%s'", agentName)
 		}
 
-		exitCode, err := client.RunContainer(image, agentCfg.HarnessCommand, agentName, agentCfg.Mounts)
+		exitCode, err := client.RunContainer(image, agentCfg.HarnessCommand, agentName, agentCfg.Mounts, commands)
 		if err != nil {
 			return fmt.Errorf("failed to run container: %w", err)
 		}

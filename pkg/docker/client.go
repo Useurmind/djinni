@@ -28,7 +28,19 @@ func NewClient() (*Client, error) {
 	return nil, fmt.Errorf("no container runtime found (podman or docker)")
 }
 
-func (c *Client) RunContainer(image string, cmd []string, name string, mounts []config.Mount) (int, error) {
+func (c *Client) RunContainer(image string, cmd []string, name string, mounts []config.Mount, commands *ContainerCommands) (int, error) {
+	if commands == nil {
+		commands = &ContainerCommands{}
+	}
+
+	if len(commands.PreCommands) == 0 && len(commands.PostCommands) == 0 {
+		return c.runContainerDirect(image, cmd, name, mounts)
+	}
+
+	return c.runContainerWithCommands(image, cmd, name, mounts, commands)
+}
+
+func (c *Client) runContainerDirect(image string, cmd []string, name string, mounts []config.Mount) (int, error) {
 	args := []string{"run", "--rm", "-it", "--network", "bridge", "--name", name}
 
 	for _, m := range mounts {
@@ -90,4 +102,54 @@ func (c *Client) runCommand(args []string) (int, error) {
 	}
 
 	return 0, nil
+}
+
+func (c *Client) runContainerWithCommands(image string, cmd []string, name string, mounts []config.Mount, commands *ContainerCommands) (int, error) {
+	args := []string{"run", "--rm", "-it", "--network", "bridge", "--name", name}
+
+	for _, m := range mounts {
+		var mountStr string
+		if m.ReadOnly {
+			mountStr = fmt.Sprintf("%s:%s:zro", m.Source, m.Destination)
+		} else {
+			mountStr = fmt.Sprintf("%s:%s:z", m.Source, m.Destination)
+		}
+		args = append(args, "-v", mountStr)
+	}
+
+	entrypoint := c.generateEntrypoint(cmd, commands)
+	args = append(args, "--entrypoint", "/bin/sh")
+	args = append(args, image)
+	args = append(args, "-c", entrypoint)
+
+	log.Info(fmt.Sprintf("Running: %s %s", c.Binary, strings.Join(args, " ")))
+	return c.runCommand(args)
+}
+
+func (c *Client) generateEntrypoint(harnessCmd []string, commands *ContainerCommands) string {
+	var builder strings.Builder
+
+	builder.WriteString("set -e\n")
+
+	for _, preCmd := range commands.PreCommands {
+		builder.WriteString(preCmd)
+		builder.WriteString("\n")
+	}
+
+	builder.WriteString("exec ")
+	for i, arg := range harnessCmd {
+		if i > 0 {
+			builder.WriteString(" ")
+		}
+		builder.WriteString(arg)
+	}
+
+	builder.WriteString("\n")
+
+	for _, postCmd := range commands.PostCommands {
+		builder.WriteString(postCmd)
+		builder.WriteString("\n")
+	}
+
+	return builder.String()
 }
