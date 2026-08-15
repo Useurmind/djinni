@@ -33,31 +33,7 @@ func (c *Client) RunContainer(image string, cmd []string, name string, mounts []
 		commands = &ContainerCommands{}
 	}
 
-	if len(commands.PreCommands) == 0 && len(commands.PostCommands) == 0 && len(commands.FilesToCopy) == 0 {
-		return c.runContainerDirect(image, cmd, name, mounts)
-	}
-
-	return c.runContainerWithCommands(image, cmd, name, mounts, commands)
-}
-
-func (c *Client) runContainerDirect(image string, cmd []string, name string, mounts []config.Mount) (int, error) {
-	args := []string{"run", "--rm", "-it", "--network", "bridge", "--name", name}
-
-	for _, m := range mounts {
-		var mountStr string
-		if m.ReadOnly {
-			mountStr = fmt.Sprintf("%s:%s:zro", m.Source, m.Destination)
-		} else {
-			mountStr = fmt.Sprintf("%s:%s:z", m.Source, m.Destination)
-		}
-		args = append(args, "-v", mountStr)
-	}
-
-	args = append(args, image)
-	args = append(args, cmd...)
-
-	log.Info(fmt.Sprintf("Running: %s %s", c.Binary, strings.Join(args, " ")))
-	return c.runCommand(args)
+	return c.runContainer(image, cmd, name, mounts, commands)
 }
 
 func (c *Client) BuildContainer(name string, containerfile string) (int, error) {
@@ -104,7 +80,7 @@ func (c *Client) runCommand(args []string) (int, error) {
 	return 0, nil
 }
 
-func (c *Client) runContainerWithCommands(image string, cmd []string, name string, mounts []config.Mount, commands *ContainerCommands) (int, error) {
+func (c *Client) runContainer(image string, cmd []string, name string, mounts []config.Mount, commands *ContainerCommands) (int, error) {
 	entrypoint := c.generateEntrypoint(cmd, commands)
 	args := []string{"run", "--rm", "-it", "--network", "bridge", "--name", name}
 
