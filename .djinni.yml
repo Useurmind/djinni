@@ -2,8 +2,9 @@ default_model: qwen-qwen3-coder-next-fp8
 agents:
   local-agent:
     harness_command:
-      - bash
+      - opencode
     containerfile: ./Containerfile
+    sync_approach: git_patch
     mounts:
       - source: /home/jgruen/.config/opencode
         destination: /home/agent/.config/opencode
