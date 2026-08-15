@@ -8,15 +8,14 @@ import (
 	"github.com/tmc/langchaingo/llms"
 	"github.com/tmc/langchaingo/llms/openai"
 	"github.com/useurmind/djinni/pkg/config"
+	"github.com/useurmind/djinni/pkg/git"
 	"github.com/useurmind/djinni/pkg/log"
 )
 
 func (a *Agent) Execute() (string, error) {
 	ctx := context.Background()
 
-	gitTool := NewGitChangedFilesTool(a.WorkingDir)
-
-	gitOutput, err := gitTool.Call(ctx, "")
+	gitOutput, err := git.GetChangedFilesWithDiffs(a.WorkingDir)
 	if err != nil {
 		return "", fmt.Errorf("failed to get changed files: %w", err)
 	}
