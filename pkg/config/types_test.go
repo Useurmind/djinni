@@ -49,6 +49,12 @@ func TestConfig_Validate(t *testing.T) {
 								ReadOnly:    true,
 							},
 						},
+						FilesToCopy: []FilesToCopy{
+							{
+								Source:      "/source/file.txt",
+								Destination: "/dest/file.txt",
+							},
+						},
 					},
 				},
 			},
@@ -178,12 +184,26 @@ func TestMount_YAMLTags(t *testing.T) {
 	}
 }
 
+func TestFilesToCopy_YAMLTags(t *testing.T) {
+	f := FilesToCopy{
+		Source:      "/src/file.txt",
+		Destination: "/dst/file.txt",
+	}
+	if f.Source != "/src/file.txt" {
+		t.Errorf("Expected source '/src/file.txt', got '%s'", f.Source)
+	}
+	if f.Destination != "/dst/file.txt" {
+		t.Errorf("Expected destination '/dst/file.txt', got '%s'", f.Destination)
+	}
+}
+
 func TestAgentConfig_YAMLTags(t *testing.T) {
 	c := &AgentConfig{
 		HarnessCommand: []string{"cmd"},
 		Image:          "image",
 		Containerfile:  "file",
 		Mounts:         []Mount{{"/src", "/dst", true}},
+		FilesToCopy:    []FilesToCopy{{"/src", "/dst"}},
 		DefaultModel:   "mymodel",
 	}
 	if len(c.HarnessCommand) != 1 {
@@ -197,6 +217,9 @@ func TestAgentConfig_YAMLTags(t *testing.T) {
 	}
 	if len(c.Mounts) != 1 {
 		t.Errorf("Expected 1 mount, got %d", len(c.Mounts))
+	}
+	if len(c.FilesToCopy) != 1 {
+		t.Errorf("Expected 1 files_to_copy, got %d", len(c.FilesToCopy))
 	}
 	if c.DefaultModel != "mymodel" {
 		t.Errorf("Expected default model 'mymodel', got '%s'", c.DefaultModel)

@@ -7,6 +7,7 @@ type AgentConfig struct {
 	Image          string            `yaml:"image"`
 	Containerfile  string            `yaml:"containerfile"`
 	Mounts         []Mount           `yaml:"mounts"`
+	FilesToCopy    []FilesToCopy     `yaml:"files_to_copy,omitempty"`
 	DefaultModel   string            `yaml:"default_model"`
 	GitWorkspace   GitWorkspaceMount `yaml:"git_workspace"`
 }
@@ -19,6 +20,11 @@ type Mount struct {
 
 type GitWorkspaceMount struct {
 	BaseDirectory string `yaml:"base_directory"`
+}
+
+type FilesToCopy struct {
+	Source      string `yaml:"source"`
+	Destination string `yaml:"destination"`
 }
 
 type Model struct {

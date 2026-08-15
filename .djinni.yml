@@ -33,3 +33,6 @@ agents:
     mounts:
       - source: ./spec
         destination: /app/specs
+    files_to_copy:
+      - source: ~/.gitconfig
+        destination: /home/agent/.gitconfig

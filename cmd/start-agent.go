@@ -49,6 +49,14 @@ var startAgentCmd = &cobra.Command{
 
 		var workspacePath string
 		var commands *docker.ContainerCommands
+		filesToCopy := []docker.FilesToCopy{}
+		for _, fc := range agentCfg.FilesToCopy {
+			filesToCopy = append(filesToCopy, docker.FilesToCopy{
+				Source:      fc.Source,
+				Destination: fc.Destination,
+			})
+		}
+
 		if taskName != "" {
 			log.Info("Setting up git workspace mount...")
 			cwd, err := os.Getwd()
@@ -88,15 +96,13 @@ var startAgentCmd = &cobra.Command{
 				return fmt.Errorf("gitconfig file not found at %s", gitconfigPath)
 			}
 
-			filesToCopy := []docker.FilesToCopy{
-				{
-					Source:      gitconfigPath,
-					Destination: "/home/agent/.gitconfig",
-				},
+			gitconfigCopy := docker.FilesToCopy{
+				Source:      gitconfigPath,
+				Destination: "/home/agent/.gitconfig",
 			}
+			filesToCopy = append(filesToCopy, gitconfigCopy)
 
 			commands = &docker.ContainerCommands{
-				FilesToCopy: filesToCopy,
 				PreCommands: []string{
 					fmt.Sprintf("cd /workspace/%s-%s", filepath.Base(cwd), taskName),
 					fmt.Sprintf("git config --global --add safe.directory /workspace/%s-%s", filepath.Base(cwd), taskName),
@@ -106,6 +112,13 @@ var startAgentCmd = &cobra.Command{
 			defer git.CleanupWorkspace(workspacePath)
 		} else if taskName != "" && agentCfg.GitWorkspace.BaseDirectory == "" {
 			return fmt.Errorf("git_workspace not configured for agent '%s'", agentName)
+		}
+
+		if len(filesToCopy) > 0 {
+			if commands == nil {
+				commands = &docker.ContainerCommands{}
+			}
+			commands.FilesToCopy = filesToCopy
 		}
 
 		exitCode, err := client.RunContainer(image, agentCfg.HarnessCommand, agentName, agentCfg.Mounts, commands)
