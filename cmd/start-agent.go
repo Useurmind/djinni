@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/useurmind/djinni/pkg/ai"
@@ -42,6 +43,10 @@ var startAgentCmd = &cobra.Command{
 		cwd, err := os.Getwd()
 		if err != nil {
 			return fmt.Errorf("failed to get current directory: %w", err)
+		}
+
+		if err := commitUncommittedChanges(cwd, configPath); err != nil {
+			return err
 		}
 
 		agentCfg, ok := cfg.Agents[agentName]
@@ -242,4 +247,64 @@ func init() {
 	if err := startAgentCmd.MarkFlagRequired("task"); err != nil {
 		log.Error(fmt.Sprintf("Failed to mark flag required: %v", err))
 	}
+}
+
+func commitUncommittedChanges(cwd, configPath string) error {
+	mode, msg, err := git.PromptCommitChanges(cwd, configPath)
+	if err != nil {
+		return fmt.Errorf("failed to prompt for commit: %w", err)
+	}
+
+	if mode == git.CommitModeNone {
+		return nil
+	}
+
+	if mode == git.CommitModeAI {
+		globalCfg, err := config.LoadGlobalConfig()
+		if err != nil {
+			return fmt.Errorf("failed to load global config: %w", err)
+		}
+
+		if len(globalCfg.ModelProviders) == 0 {
+			return fmt.Errorf("no model providers configured in global config")
+		}
+
+		cfg, err := config.LoadConfig(configPath)
+		if err != nil {
+			return fmt.Errorf("failed to load config: %w", err)
+		}
+
+		defaultModel := ""
+		if cfg.DefaultModel != "" {
+			defaultModel = cfg.DefaultModel
+		}
+
+		aiAgent := &ai.Agent{
+			WorkingDir: cwd,
+			ReadPaths:  []string{cwd},
+			Provider:   &globalCfg.ModelProviders[0],
+			ModelID:    defaultModel,
+		}
+
+		msg, err = aiAgent.Execute()
+		if err != nil {
+			return fmt.Errorf("failed to generate commit message: %w", err)
+		}
+		msg = strings.TrimSpace(msg)
+	} else if mode == git.CommitModeManual && msg == "" {
+		return fmt.Errorf("manual commit message is empty")
+	}
+
+	log.Info("Staging all changes...")
+	if err := git.AddFiles(cwd); err != nil {
+		return fmt.Errorf("failed to stage files: %w", err)
+	}
+
+	log.Info(fmt.Sprintf("Committing changes with message: %s", msg))
+	if err := git.CommitAll(cwd, msg); err != nil {
+		return fmt.Errorf("failed to commit: %w", err)
+	}
+
+	log.Success("Changes committed successfully.")
+	return nil
 }
