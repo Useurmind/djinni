@@ -168,7 +168,6 @@ func (c *Client) generateEntrypoint(harnessCmd []string, commands *ContainerComm
 		builder.WriteString("\n")
 	}
 
-	builder.WriteString("exec ")
 	for i, arg := range harnessCmd {
 		if i > 0 {
 			builder.WriteString(" ")
