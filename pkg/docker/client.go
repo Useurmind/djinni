@@ -120,7 +120,7 @@ func (c *Client) runContainerWithCommands(image string, cmd []string, name strin
 
 	args = append(args, "--entrypoint", "/bin/bash")
 	args = append(args, image)
-	args = append(args, "-c", entrypoint)
+	args = append(args, "-i", "-c", entrypoint)
 
 	log.Info(fmt.Sprintf("Running: %s %s", c.Binary, strings.Join(args, " ")))
 
