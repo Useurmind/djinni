@@ -1,4 +1,4 @@
-.PHONY: build test vet lint run clean
+.PHONY: build test vet lint run clean deadcode
 
 BUILD_DIR = ./bin
 BINARY = $(BUILD_DIR)/djinni
@@ -8,6 +8,9 @@ build: $(BUILD_DIR)
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
+
+deadcode:
+	deadcode -test ./...
 
 test:
 	go test -v ./...

@@ -6,7 +6,11 @@ agents:
     containerfile: ./Containerfile
     mounts:
       - source: /home/jgruen/.config/opencode
-        destination: /home/jgruen/agent/.config/opencode
+        destination: /home/agent/.config/opencode
+      - source: /home/jgruen/.local/state/opencode
+        destination: /home/agent/.local/state/opencode
+      - source: /home/jgruen/.local/share/opencode
+        destination: /home/agent/.local/share/opencode
   registry-agent:
     harness_command:
       - python

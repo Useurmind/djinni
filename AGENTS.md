@@ -3,7 +3,7 @@
 ## Build & verification
 
 ```bash
-make build test vet lint
+make build test vet lint deadcode
 ```
 
 A task is complete only when all four succeed.
