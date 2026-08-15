@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -13,6 +14,16 @@ import (
 	"github.com/useurmind/djinni/pkg/git"
 	"github.com/useurmind/djinni/pkg/log"
 )
+
+func execCommand(name string, args []string, workdir string) error {
+	cmd := exec.Command(name, args...)
+	cmd.Dir = workdir
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("%s failed: %v, output: %s", name, err, string(output))
+	}
+	return nil
+}
 
 var startAgentCmd = &cobra.Command{
 	Use:   "start-agent <agent-name>",
@@ -186,12 +197,34 @@ var startAgentCmd = &cobra.Command{
 						if err != nil {
 							log.Error(fmt.Sprintf("Failed to generate commit message: %v", err))
 						} else {
+							syncApproach := "branch_sync"
+							if agentCfg.SyncApproach != "" {
+								syncApproach = agentCfg.SyncApproach
+							}
+
 							if err := git.CommitAll(workspacePath, commitMsg); err != nil {
 								log.Error(fmt.Sprintf("Failed to commit: %v", err))
+							} else if syncApproach == "git_patch" {
+								patchDir := filepath.Join(filepath.Dir(workspacePath), "patches")
+								if err := git.CreatePatch(workspacePath, fmt.Sprintf("feature/%s", taskName), patchDir); err != nil {
+									log.Error(fmt.Sprintf("Failed to create patch: %v", err))
+								} else {
+									patches, _ := filepath.Glob(filepath.Join(patchDir, "*.patch"))
+									if len(patches) > 0 {
+										if err := git.ApplyPatch(cwd, patches[0]); err != nil {
+											log.Error(fmt.Sprintf("Failed to apply patch: %v", err))
+										}
+									}
+								}
 							} else {
 								branchName := fmt.Sprintf("feature/%s", taskName)
 								if err := git.PushBranch(workspacePath, branchName); err != nil {
 									log.Error(fmt.Sprintf("Failed to push branch: %v", err))
+								} else if agentCfg.AutomergeAgentBranch {
+									log.Info(fmt.Sprintf("Merging branch %s into current branch", branchName))
+									if err := execCommand("git", []string{"merge", branchName}, cwd); err != nil {
+										log.Error(fmt.Sprintf("Failed to merge branch: %v", err))
+									}
 								}
 							}
 						}

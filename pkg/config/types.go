@@ -3,13 +3,15 @@ package config
 import "fmt"
 
 type AgentConfig struct {
-	HarnessCommand []string          `yaml:"harness_command"`
-	Image          string            `yaml:"image"`
-	Containerfile  string            `yaml:"containerfile"`
-	Mounts         []Mount           `yaml:"mounts"`
-	FilesToCopy    []FilesToCopy     `yaml:"files_to_copy,omitempty"`
-	DefaultModel   string            `yaml:"default_model"`
-	GitWorkspace   GitWorkspaceMount `yaml:"git_workspace"`
+	HarnessCommand       []string          `yaml:"harness_command"`
+	Image                string            `yaml:"image"`
+	Containerfile        string            `yaml:"containerfile"`
+	Mounts               []Mount           `yaml:"mounts"`
+	FilesToCopy          []FilesToCopy     `yaml:"files_to_copy,omitempty"`
+	DefaultModel         string            `yaml:"default_model"`
+	GitWorkspace         GitWorkspaceMount `yaml:"git_workspace"`
+	SyncApproach         string            `yaml:"sync_approach,omitempty"`
+	AutomergeAgentBranch bool              `yaml:"automerge_agent_branch,omitempty"`
 }
 
 type Mount struct {
@@ -66,6 +68,9 @@ func (c *Config) Validate() error {
 		}
 		if agent.GitWorkspace.BaseDirectory == "" {
 			agent.GitWorkspace.BaseDirectory = fmt.Sprintf("/tmp/%s", name)
+		}
+		if agent.SyncApproach != "" && agent.SyncApproach != "branch_sync" && agent.SyncApproach != "git_patch" {
+			return fmt.Errorf("agent '%s': sync_approach must be 'branch_sync' or 'git_patch'", name)
 		}
 	}
 	return nil
