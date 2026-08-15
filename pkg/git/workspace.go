@@ -53,18 +53,6 @@ func CheckoutNewBranch(repoPath, taskName string) error {
 	return nil
 }
 
-func CleanupWorkspace(workspacePath string) {
-	if workspacePath == "" {
-		return
-	}
-
-	log.Info(fmt.Sprintf("Cleaning up workspace: %s", workspacePath))
-
-	if err := os.RemoveAll(workspacePath); err != nil {
-		log.Error(fmt.Sprintf("Failed to cleanup workspace %s: %v", workspacePath, err))
-	}
-}
-
 func getRepoName(dir string) (string, error) {
 	absDir, err := filepath.Abs(dir)
 	if err != nil {

@@ -116,10 +116,8 @@ func prepareWorkspace(agentCfg *config.AgentConfig, cwd, agentName, taskName str
 	if workspacePath != "" {
 		log.Info(fmt.Sprintf("Using local workspace: %s", workspacePath))
 		if err := git.CheckoutNewBranch(workspacePath, taskName); err != nil {
-			defer git.CleanupWorkspace(workspacePath)
 			return nil, "", nil, nil, "", fmt.Errorf("failed to checkout branch: %w", err)
 		}
-		defer git.CleanupWorkspace(workspacePath)
 	}
 
 	log.Info(fmt.Sprintf("Using image: %s", image))
@@ -150,10 +148,10 @@ func setupWorkspace(agentCfg *config.AgentConfig, cwd, agentName, taskName strin
 			return "", nil, nil, "", fmt.Errorf("failed to clone workspace: %w", err)
 		}
 
-		mountPath := filepath.Join("/workspace", fmt.Sprintf("%s-%s", filepath.Base(cwd), taskName))
+		workspaceMountPath := filepath.Join("/workspace", fmt.Sprintf("%s-%s", filepath.Base(cwd), taskName))
 		agentCfg.Mounts = append(agentCfg.Mounts, config.Mount{
 			Source:      workspacePath,
-			Destination: mountPath,
+			Destination: workspaceMountPath,
 		})
 
 		homeDir, err := os.UserHomeDir()
