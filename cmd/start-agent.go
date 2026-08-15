@@ -79,9 +79,10 @@ var startAgentCmd = &cobra.Command{
 			agentCfg.Mounts = append(agentCfg.Mounts, workspaceMount)
 
 			commands = &docker.ContainerCommands{
-				PreCommands: []string{
-					fmt.Sprintf("git config --global --add safe.directory /workspace/%s-%s", repoName, taskName),
-				},
+			PreCommands: []string{
+				fmt.Sprintf("cd /workspace/%s-%s", repoName, taskName),
+				fmt.Sprintf("git config --global --add safe.directory /workspace/%s-%s", repoName, taskName),
+			},
 			}
 
 			defer git.CleanupWorkspace(workspacePath)

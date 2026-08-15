@@ -11,12 +11,12 @@ RUN curl -fsSL https://go.dev/dl/go1.22.5.linux-amd64.tar.gz | tar -C /usr/local
 
 ENV PATH="/usr/local/go/bin:${PATH}"
 
-RUN curl -fsSL https://opencode.ai/install | bash
-
 RUN useradd -m -s /bin/bash agent
 
 USER agent
 
 WORKDIR /home/agent
+
+RUN curl -fsSL https://opencode.ai/install | bash
 
 CMD ["opencode"]
