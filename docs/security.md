@@ -57,6 +57,46 @@ This prevents:
 - Accidental modification of critical files
 - Ransomware-style encryption of configuration
 
+### Read-Only Root Filesystem
+
+Djinni enables read-only root filesystem by default for maximum security:
+
+```yaml
+agents:
+  secure-agent:
+    harness_command: [opencode]
+    containerfile: ./Containerfile
+    forceReadOnlyRootOff: false
+    tmpfsMounts:
+      - destination: /tmp
+      - destination: /cache
+        size: "512m"
+```
+
+**Read-only root prevents:**
+- Container escape attacks modifying system files
+- Unauthorized software installation within the container
+- Malware persistence through filesystem modifications
+
+### Tmpfs Mounts
+
+Tmpfs (RAM-backed) mounts provide writable storage for read-only containers:
+
+```yaml
+tmpfsMounts:
+  - destination: /tmp
+  - destination: /cache
+    size: "512m"
+```
+
+**Benefits of tmpfs:**
+- Data automatically cleared on container exit
+- RAM-backed performance for temporary files
+- No host filesystem exposure
+- Size limits prevent memory exhaustion
+
+
+
 ### File Copy Mechanism
 
 Critical files (like `.gitconfig`, SSH keys) are copied into the container rather than mounted:
@@ -161,10 +201,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 ### 2. Read-Only Root Filesystem
 
-Consider adding `--read-only` flag to container runs for maximum isolation:
+Enable read-only root filesystem in agent configuration:
 
-```bash
-podman run --read-only -v /tmp:djinni:rw,z ...
+```yaml
+agents:
+  secure-agent:
+    forceReadOnlyRootOff: false
+    tmpfsMounts:
+      - destination: /tmp
 ```
 
 ### 3. Network Restrictions
@@ -199,5 +243,7 @@ Djinni's security model focuses on:
 | Mount isolation | Granular read/write mounts | Limit file access scope |
 | Network isolation | Bridge network | Restrict container comms |
 | File copying | Static file copy | Prevent live symlink attacks |
+| Root filesystem isolation | Read-only root | Prevent filesystem modifications |
+| Temporary storage | Tmpfs mounts | Secure writable temporary storage |
 
 This multi-layered approach provides defense-in-depth against container escape and lateral movement attacks.

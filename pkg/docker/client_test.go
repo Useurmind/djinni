@@ -160,6 +160,91 @@ func TestRunContainer(t *testing.T) {
 	}
 }
 
+func TestRunContainer_ReadOnlyRoot(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	client := &Client{Binary: "docker"}
+
+	dockerPath := filepath.Join(tmpDir, "docker")
+	if err := os.WriteFile(dockerPath, []byte("#!/bin/sh\nexit 0"), 0755); err != nil {
+		t.Fatalf("Failed to create docker stub: %v", err)
+	}
+
+	oldPath := os.Getenv("PATH")
+	defer os.Setenv("PATH", oldPath)
+	os.Setenv("PATH", tmpDir+string(os.PathListSeparator)+oldPath)
+
+	commands := &ContainerCommands{
+		ForceReadOnlyRootOff: false,
+		TmpfsMounts: []TmpfsMount{
+			{Destination: "/tmp"},
+			{Destination: "/cache", Size: "512m"},
+		},
+	}
+
+	_, err := client.RunContainer("test-image", []string{"echo", "test"}, "test-container", []config.Mount{}, commands)
+	if err != nil {
+		t.Errorf("RunContainer() error = %v", err)
+	}
+}
+
+func TestRunContainer_TmpfsMounts(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	tests := []struct {
+		name        string
+		tmpfsMounts []TmpfsMount
+	}{
+		{
+			name:        "no tmpfs mounts",
+			tmpfsMounts: []TmpfsMount{},
+		},
+		{
+			name: "single tmpfs mount",
+			tmpfsMounts: []TmpfsMount{
+				{Destination: "/tmp"},
+			},
+		},
+		{
+			name: "tmpfs mount with size",
+			tmpfsMounts: []TmpfsMount{
+				{Destination: "/tmp", Size: "1g"},
+			},
+		},
+		{
+			name: "multiple tmpfs mounts",
+			tmpfsMounts: []TmpfsMount{
+				{Destination: "/tmp"},
+				{Destination: "/cache", Size: "512m"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := &Client{Binary: "docker"}
+
+			dockerPath := filepath.Join(tmpDir, "docker")
+			if err := os.WriteFile(dockerPath, []byte("#!/bin/sh\nexit 0"), 0755); err != nil {
+				t.Fatalf("Failed to create docker stub: %v", err)
+			}
+
+			oldPath := os.Getenv("PATH")
+			defer os.Setenv("PATH", oldPath)
+			os.Setenv("PATH", tmpDir+string(os.PathListSeparator)+oldPath)
+
+			commands := &ContainerCommands{
+				TmpfsMounts: tt.tmpfsMounts,
+			}
+
+			_, err := client.RunContainer("test-image", []string{"echo", "test"}, "test-container", []config.Mount{}, commands)
+			if err != nil {
+				t.Errorf("RunContainer() error = %v", err)
+			}
+		})
+	}
+}
+
 func TestBuildContainer(t *testing.T) {
 	tmpDir := t.TempDir()
 
