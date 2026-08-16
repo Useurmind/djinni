@@ -299,7 +299,7 @@ func syncWithPatch(agentCfg *config.AgentConfig, branchName, workspacePath, cwd 
 	}
 
 	if autodelete {
-		if err := git.DeleteBranch(workspacePath, branchName); err != nil {
+		if err := git.DeleteBranch(cwd, branchName); err != nil {
 			log.Error(fmt.Sprintf("Failed to delete branch: %v", err))
 		}
 	}
@@ -316,7 +316,7 @@ func syncWithBranch(agentCfg *config.AgentConfig, branchName, workspacePath, cwd
 	}
 
 	if autodelete {
-		if err := git.DeleteBranch(workspacePath, branchName); err != nil {
+		if err := git.DeleteBranch(cwd, branchName); err != nil {
 			log.Error(fmt.Sprintf("Failed to delete branch: %v", err))
 		}
 	}

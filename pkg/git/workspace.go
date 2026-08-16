@@ -74,7 +74,7 @@ func getRepoName(dir string) (string, error) {
 func DeleteBranch(repoPath, branchName string) error {
 	log.Info(fmt.Sprintf("Deleting branch %s", branchName))
 
-	if err := execCommand("git", []string{"branch", "-d", branchName}, repoPath); err != nil {
+	if err := execCommand("git", []string{"branch", "-D", branchName}, repoPath); err != nil {
 		return fmt.Errorf("failed to delete branch %s: %w", branchName, err)
 	}
 
