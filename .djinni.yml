@@ -5,6 +5,7 @@ agents:
       - opencode
     containerfile: ./Containerfile
     # sync_approach: git_patch
+    forceReadonlyRootOff: true
     mounts:
       - source: /home/jgruen/.config/opencode
         destination: /home/agent/.config/opencode
@@ -15,7 +16,7 @@ agents:
       - source: /home/jgruen/.local/share/opencode
         destination: /home/agent/.local/share/opencode
     tmpfsMounts:
-      - destination: /tmp
+      - destination: /home/agent
       - destination: /cache
         size: "512m"
   registry-agent:
