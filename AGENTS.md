@@ -27,7 +27,8 @@ A task is complete only when all four succeed.
 2. **Test package**: `testify/assert` for assertions; use `require.NoError(t, err, "descriptive message")` for errors
 3. **Test scope**: Skip tests that only verify struct field access—assume that works
 4. **Mount paths in Docker**: Source → destination; use `:z` (rw) or `:zro` (ro) SELinux labels
-5. **Code structure**: 
+5. **Code Documentation**: Add documentation to structs, struct fields (especially in the config package) and funcs (especially public funcs)
+6. **Code structure**: 
     - Dont make them too long/short, strive to keep functions on single abstraction levels and extract code to new funcs if the abstraction level does not match the current function.
     - prefer handing the variables from func to func instead of defining global variables, create conceptually sound 'classes' or container structs if signatures become to large
 ---

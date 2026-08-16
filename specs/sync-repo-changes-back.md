@@ -1,32 +1,56 @@
-We want to offer the user several ways to sync back the changes the ai agent made in the container
+We want to offer a flexible workflow to get the changes from the agent back to the users repo
 
-    1. push the branch from the agent repo to the users repo (optionally automerge into users branch)
-    2. create a patch from the agent repo and apply it the users repo
+Always:
+- The agent develops on a feature branch 
+- The changes are automatically commited to that branch and synced back to the user repo
 
-# Push Branch Approach
+Now the user has several options for applying the changes
 
-This is already implemented.
+- no action, leave it up to the user how to proceed
+- automerge the branch to the users branch (optionally with auto delete of the agent branch)
+- apply a patch of the changes the agent did to the workspace of the user (optionally with auto delete of the agent branch)
+
+
+# Push Branch 
+
+Initial development and sync are as follows
 
 - Create task branch in agent repo
 - Commit after container exits (with automatic commit message from ai agent)
 - Push branch to user repo
 
-No changes required, except for the option to automatically merge the agent task branch into the user branch.
+# Applying the changes
+
+Once the container has exited and the agent branch was pushed to the user branch, several approaches are possible to apply the changes from the agent branch.
+
+## Automerge Approach
+
+First option is automerge, to automatically merge the agent task branch into the user branch.
 This should be configurable in the agent config in the repo.
-If `automerge_agent_branch` is set to true, the agents task branch will automatically be merged onto the users branch.
-
-This approach can be configured via
-
-    sync_approach: "branch_sync"
+If `sync_approach` is set to `automerge`, the agents task branch will automatically be merged onto the users branch.
 
 ## Apply Patch Approach
 
-This is the new approach:
+This approach is as follows:
 
-- Create task branch in agent repo
-- After container exits create a git patch from the changes in the branch of the agent repo
-- Apply the patch to the users repo
+- Create a git patch from the commit(s) on the agent branch
+- Apply the patch to workspace of the user (no commit, just apply to files in filesystem)
 
-This approach can be configured via
+This approach can be configured via `sync_approach: gitpatch`
 
-    sync_approach: "git_patch"
+## Autodelete agent branch
+
+After the sync of the changes has taken place either via automerge or via git patch, the user has the option to automatically delete the agent branch.
+Can be configured via `autodelete_agent_branch`.
+
+## Interactivity
+
+The user should be able to choose all of this interactively if not configured in the agent config.
+If the flags are false, there should be a prompt that ask the user to decide.
+
+Details:
+
+- If `sync_approach` is not set, ask the user for the sync approach `none`, `gitpatch`, `automerge`
+- If `autodelete_agent_branch` is false and the `sync_approach` is not `none` ask the user if the agent branch should be deleted
+
+Autodelete of agent branch should be done after the git patch was applied or the automerge was performed.
