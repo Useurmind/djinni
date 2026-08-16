@@ -84,6 +84,20 @@ func (c *Client) runContainer(image string, cmd []string, name string, mounts []
 	entrypoint := c.generateEntrypoint(cmd, commands)
 	args := []string{"run", "--rm", "-it", "--network", "bridge", "--name", name}
 
+	if commands != nil && !commands.ForceReadOnlyRootOff {
+		args = append(args, "--read-only")
+	}
+
+	for _, tmpfs := range commands.TmpfsMounts {
+		var tmpfsArg string
+		if tmpfs.Size != "" {
+			tmpfsArg = fmt.Sprintf("%s:mode=1777,size=%s", tmpfs.Destination, tmpfs.Size)
+		} else {
+			tmpfsArg = fmt.Sprintf("%s:mode=1777", tmpfs.Destination)
+		}
+		args = append(args, "--tmpfs", tmpfsArg)
+	}
+
 	for _, m := range mounts {
 		var mountStr string
 		if m.ReadOnly {

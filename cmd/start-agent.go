@@ -178,6 +178,19 @@ func setupWorkspace(agentCfg *config.AgentConfig, cwd, agentName, taskName strin
 		}
 	}
 
+	if commands == nil {
+		commands = &docker.ContainerCommands{}
+	}
+
+	commands.ForceReadOnlyRootOff = agentCfg.ForceReadOnlyRootOff
+
+	for _, tmpfs := range agentCfg.TmpfsMounts {
+		commands.TmpfsMounts = append(commands.TmpfsMounts, docker.TmpfsMount{
+			Destination: tmpfs.Destination,
+			Size:        tmpfs.Size,
+		})
+	}
+
 	return image, commands, filesToCopy, workspacePath, nil
 }
 

@@ -22,6 +22,10 @@ type AgentConfig struct {
 	SyncApproach string `yaml:"sync_approach,omitempty"`
 	// AutoDeleteAgentBranch automatically deletes the feature branch after sync
 	AutoDeleteAgentBranch bool `yaml:"autodelete_agent_branch,omitempty"`
+	// ForceReadOnlyRootOff disables read-only root filesystem (default: false)
+	ForceReadOnlyRootOff bool `yaml:"forceReadOnlyRootOff"`
+	// TmpfsMounts specifies tmpfs mounts for the container (e.g., /tmp, /cache)
+	TmpfsMounts []TmpfsMount `yaml:"tmpfsMounts,omitempty"`
 }
 
 // Mount represents a volume mount from host to container
@@ -38,6 +42,14 @@ type Mount struct {
 type GitWorkspaceMount struct {
 	// BaseDirectory is the base directory for git operations (default: /tmp/djinni)
 	BaseDirectory string `yaml:"base_directory"`
+}
+
+// TmpfsMount configures a tmpfs mount for the container
+type TmpfsMount struct {
+	// Destination is the path inside the container (required)
+	Destination string `yaml:"destination"`
+	// Size is the maximum size of the tmpfs in bytes or with suffix (e.g., "512m", "1g")
+	Size string `yaml:"size,omitempty"`
 }
 
 // FilesToCopy represents a file to copy into the container
@@ -102,6 +114,11 @@ func (c *Config) Validate() error {
 		}
 		if agent.SyncApproach != "" && agent.SyncApproach != "none" && agent.SyncApproach != "gitpatch" && agent.SyncApproach != "automerge" {
 			return fmt.Errorf("agent '%s': sync_approach must be 'none', 'gitpatch', or 'automerge'", name)
+		}
+		for _, tmpfs := range agent.TmpfsMounts {
+			if tmpfs.Destination == "" {
+				return fmt.Errorf("agent '%s': tmpfsMounts.destination is required", name)
+			}
 		}
 	}
 	return nil

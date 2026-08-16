@@ -146,13 +146,32 @@ Strategy for syncing changes back to your workspace after the agent completes.
 sync_approach: gitpatch
 ```
 
-#### `autodelete_agent_branch` (bool, optional)
+#### `forceReadOnlyRootOff` (bool, optional)
 
-Automatically delete the `feature/<task>` branch after syncing changes back to your workspace. Only applicable when using `gitpatch` or `automerge` sync approaches.
+Disable read-only root filesystem for the container. By default, containers run with read-only root filesystem for enhanced security. Set this to `true` to allow the container to modify its filesystem (default: `false`).
 
 **Example:**
 ```yaml
-autodelete_agent_branch: true
+forceReadOnlyRootOff: false
+```
+
+When using read-only mode, you can specify writable paths using `tmpfsMounts` and regular mounts.
+
+#### `tmpfsMounts` ([]TmpfsMount, optional)
+
+Configure tmpfs (RAM-backed) mounts for the container. Useful for /tmp and other directories that need write access in read-only mode.
+
+**TmpfsMount Fields:**
+
+- `destination` (string) **Required**: Path inside the container
+- `size` (string, optional): Maximum size of the tmpfs (e.g., "512m", "1g")
+
+**Example:**
+```yaml
+tmpfsMounts:
+  - destination: /tmp
+  - destination: /cache
+    size: "512m"
 ```
 
 ## Global Configuration (`~/.config/djinni/config.yaml`)
@@ -256,6 +275,11 @@ agents:
     autodelete_agent_branch: true
     git_workspace:
       base_directory: /tmp/opencode-workspace
+    forceReadOnlyRootOff: false
+    tmpfsMounts:
+      - destination: /tmp
+      - destination: /cache
+        size: "512m"
     mounts:
       - source: /home/user/.config/opencode
         destination: /home/agent/.config/opencode

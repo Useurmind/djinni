@@ -90,6 +90,8 @@ See [Configuration Guide](docs/configuration.md#agent-configurations) for detail
 | `git_workspace` | Git workspace configuration for task-based work |
 | `sync_approach` | How to sync changes back: `none`, `gitpatch`, `automerge` |
 | `autodelete_agent_branch` | Auto-delete feature branch after sync |
+| `forceReadOnlyRootOff` | Disable read-only root filesystem |
+| `tmpfsMounts` | Tmpfs mounts for writable paths in read-only mode |
 | `default_model` | Override default LLM model for this agent |
 
 ### Workflow
