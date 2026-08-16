@@ -71,6 +71,17 @@ func getRepoName(dir string) (string, error) {
 	return filepath.Base(absDir), nil
 }
 
+func DeleteBranch(repoPath, branchName string) error {
+	log.Info(fmt.Sprintf("Deleting branch %s", branchName))
+
+	if err := execCommand("git", []string{"branch", "-d", branchName}, repoPath); err != nil {
+		return fmt.Errorf("failed to delete branch %s: %w", branchName, err)
+	}
+
+	log.Success(fmt.Sprintf("Deleted branch %s", branchName))
+	return nil
+}
+
 func AddFiles(repoPath string) error {
 	log.Info(fmt.Sprintf("Staging all changes in %s", repoPath))
 

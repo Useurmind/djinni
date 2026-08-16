@@ -203,69 +203,115 @@ func handlePostExecution(agentCfg *config.AgentConfig, cfg *config.Config, cwd, 
 
 	log.Info(fmt.Sprintf("Detected %d changed files", len(changedFiles)))
 
-	syncApproach := "branch_sync"
-	if agentCfg.SyncApproach != "" {
-		syncApproach = agentCfg.SyncApproach
+	syncApproach := agentCfg.SyncApproach
+	if syncApproach == "" {
+		syncApproach, err = git.PromptSyncApproach()
+		if err != nil {
+			log.Error(fmt.Sprintf("Failed to prompt for sync approach: %v", err))
+			return nil
+		}
 	}
 
-	if syncApproach == "git_patch" {
-		return syncWithPatch(agentCfg, taskName, workspacePath, cwd)
+	autodelete := agentCfg.AutoDeleteAgentBranch
+	if !autodelete && syncApproach != "none" {
+		autodelete, err = git.PromptAutoDeleteBranch()
+		if err != nil {
+			log.Error(fmt.Sprintf("Failed to prompt for autodelete: %v", err))
+			return nil
+		}
 	}
 
-	return syncWithBranch(agentCfg, cfg, taskName, cwd, workspacePath)
-}
-
-func syncWithPatch(agentCfg *config.AgentConfig, taskName, workspacePath, cwd string) error {
-	patchDir := filepath.Join(filepath.Dir(workspacePath), "patches")
-	if err := git.CreatePatch(workspacePath, fmt.Sprintf("feature/%s", taskName), patchDir); err != nil {
-		log.Error(fmt.Sprintf("Failed to create patch: %v", err))
+	branchName := fmt.Sprintf("feature/%s", taskName)
+	err = commitAndPushFromAgent(agentCfg, branchName, workspacePath, cwd)
+	if err != nil {
+		log.Error(fmt.Sprintf("Failed to commit and push changes: %v", err))
 		return nil
 	}
 
-	patches, _ := filepath.Glob(filepath.Join(patchDir, "*.patch"))
-	if len(patches) > 0 {
-		if err := git.ApplyPatch(cwd, patches[0]); err != nil {
-			log.Error(fmt.Sprintf("Failed to apply patch: %v", err))
-		}
+	switch syncApproach {
+	case "gitpatch":
+		return syncWithPatch(agentCfg, branchName, workspacePath, cwd, autodelete)
+	case "automerge":
+		return syncWithBranch(agentCfg, branchName, workspacePath, cwd, autodelete)
+	case "none":
+		log.Info("No sync approach selected, leaving changes on feature branch")
+	default:
+		log.Error(fmt.Sprintf("Unknown sync approach: %s", syncApproach))
+		return nil
 	}
+
 	return nil
 }
 
-func syncWithBranch(agentCfg *config.AgentConfig, cfg *config.Config, taskName, cwd, workspacePath string) error {
+func commitAndPushFromAgent(agentCfg *config.AgentConfig, branchName, workspacePath, cwd string) error {
 	log.Info("Staging all changes...")
 	if err := git.AddFiles(workspacePath); err != nil {
 		log.Error(fmt.Sprintf("Failed to stage files: %v", err))
-		return nil
+		return err
 	}
 
 	defaultModel := ""
 	if agentCfg.DefaultModel != "" {
 		defaultModel = agentCfg.DefaultModel
 	} else {
+		cfg, _ := config.LoadConfig("")
 		defaultModel = cfg.DefaultModel
 	}
 
-	commitMsg, err := generateCommitMessage(workspacePath, defaultModel, cfg)
+	commitMsg, err := generateCommitMessage(workspacePath, defaultModel)
 	if err != nil {
 		log.Error(fmt.Sprintf("Failed to generate commit message: %v", err))
-		return nil
+		return err
 	}
 
 	if err := git.CommitAll(workspacePath, commitMsg); err != nil {
 		log.Error(fmt.Sprintf("Failed to commit: %v", err))
-		return nil
+		return err
 	}
 
-	branchName := fmt.Sprintf("feature/%s", taskName)
 	if err := git.PushBranch(workspacePath, branchName); err != nil {
 		log.Error(fmt.Sprintf("Failed to push branch: %v", err))
-		return nil
+		return err
+	}
+	return nil
+}
+
+func syncWithPatch(agentCfg *config.AgentConfig, branchName, workspacePath, cwd string, autodelete bool) error {
+	patchDir := filepath.Join(filepath.Dir(cwd), "patches")
+	if err := git.CreatePatch(cwd, patchDir); err != nil {
+		log.Error(fmt.Sprintf("Failed to create patch: %v", err))
+		return err
 	}
 
-	if agentCfg.AutomergeAgentBranch {
-		log.Info(fmt.Sprintf("Merging branch %s into current branch", branchName))
-		if err := execCommand("git", []string{"merge", branchName}, cwd); err != nil {
-			log.Error(fmt.Sprintf("Failed to merge branch: %v", err))
+	patches, _ := filepath.Glob(filepath.Join(patchDir, "*.patch"))
+	if len(patches) > 0 {
+		log.Info("Applying patch to user workspace (files only)...")
+		if err := git.ApplyPatchNoIndex(cwd, patches[0]); err != nil {
+			log.Error(fmt.Sprintf("Failed to apply patch: %v", err))
+			return err
+		}
+	}
+
+	if autodelete {
+		if err := git.DeleteBranch(workspacePath, branchName); err != nil {
+			log.Error(fmt.Sprintf("Failed to delete branch: %v", err))
+		}
+	}
+
+	return nil
+}
+
+func syncWithBranch(agentCfg *config.AgentConfig, branchName, workspacePath, cwd string, autodelete bool) error {
+
+	log.Info(fmt.Sprintf("Merging branch %s into current branch", branchName))
+	if err := execCommand("git", []string{"merge", branchName}, cwd); err != nil {
+		log.Error(fmt.Sprintf("Failed to merge branch: %v", err))
+		return err
+	}
+
+	if autodelete {
+		if err := git.DeleteBranch(workspacePath, branchName); err != nil {
+			log.Error(fmt.Sprintf("Failed to delete branch: %v", err))
 		}
 	}
 
@@ -332,7 +378,7 @@ func commitUncommittedChanges(cwd, configPath string) error {
 	return nil
 }
 
-func generateCommitMessage(workingDir, defaultModel string, cfg *config.Config) (string, error) {
+func generateCommitMessage(workingDir, defaultModel string) (string, error) {
 	globalCfg, err := config.LoadGlobalConfig()
 	if err != nil {
 		return "", fmt.Errorf("failed to load global config: %w", err)

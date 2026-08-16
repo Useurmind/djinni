@@ -3,15 +3,15 @@ package config
 import "fmt"
 
 type AgentConfig struct {
-	HarnessCommand       []string          `yaml:"harness_command"`
-	Image                string            `yaml:"image"`
-	Containerfile        string            `yaml:"containerfile"`
-	Mounts               []Mount           `yaml:"mounts"`
-	FilesToCopy          []FilesToCopy     `yaml:"files_to_copy,omitempty"`
-	DefaultModel         string            `yaml:"default_model"`
-	GitWorkspace         GitWorkspaceMount `yaml:"git_workspace"`
-	SyncApproach         string            `yaml:"sync_approach,omitempty"`
-	AutomergeAgentBranch bool              `yaml:"automerge_agent_branch,omitempty"`
+	HarnessCommand        []string          `yaml:"harness_command"`
+	Image                 string            `yaml:"image"`
+	Containerfile         string            `yaml:"containerfile"`
+	Mounts                []Mount           `yaml:"mounts"`
+	FilesToCopy           []FilesToCopy     `yaml:"files_to_copy,omitempty"`
+	DefaultModel          string            `yaml:"default_model"`
+	GitWorkspace          GitWorkspaceMount `yaml:"git_workspace"`
+	SyncApproach          string            `yaml:"sync_approach,omitempty"`
+	AutoDeleteAgentBranch bool              `yaml:"autodelete_agent_branch,omitempty"`
 }
 
 type Mount struct {
@@ -69,8 +69,8 @@ func (c *Config) Validate() error {
 		if agent.GitWorkspace.BaseDirectory == "" {
 			agent.GitWorkspace.BaseDirectory = "/tmp/djinni"
 		}
-		if agent.SyncApproach != "" && agent.SyncApproach != "branch_sync" && agent.SyncApproach != "git_patch" {
-			return fmt.Errorf("agent '%s': sync_approach must be 'branch_sync' or 'git_patch'", name)
+		if agent.SyncApproach != "" && agent.SyncApproach != "none" && agent.SyncApproach != "gitpatch" && agent.SyncApproach != "automerge" {
+			return fmt.Errorf("agent '%s': sync_approach must be 'none', 'gitpatch', or 'automerge'", name)
 		}
 	}
 	return nil

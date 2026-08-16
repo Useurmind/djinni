@@ -107,6 +107,56 @@ func promptCommitMode(repoPath string, configPath string) (CommitMode, string, e
 	}
 }
 
+func PromptSyncApproach() (string, error) {
+	reader := bufio.NewReader(os.Stdin)
+
+	for {
+		fmt.Println()
+		fmt.Println("Select sync approach:")
+		fmt.Println("  none      - Leave changes on feature branch, no automatic sync")
+		fmt.Println("  gitpatch  - Apply patch of changes to workspace (no commit)")
+		fmt.Println("  automerge - Merge feature branch into current branch")
+		fmt.Print("Choice (none/gitpatch/automerge): ")
+
+		response, err := reader.ReadString('\n')
+		if err != nil {
+			return "", fmt.Errorf("failed to read input: %w", err)
+		}
+
+		response = strings.TrimSpace(strings.ToLower(response))
+
+		switch response {
+		case "none", "gitpatch", "automerge":
+			return response, nil
+		default:
+			fmt.Println("Please choose 'none', 'gitpatch', or 'automerge'.")
+		}
+	}
+}
+
+func PromptAutoDeleteBranch() (bool, error) {
+	reader := bufio.NewReader(os.Stdin)
+
+	for {
+		fmt.Print("Delete agent feature branch after sync? (yes/no): ")
+		response, err := reader.ReadString('\n')
+		if err != nil {
+			return false, fmt.Errorf("failed to read input: %w", err)
+		}
+
+		response = strings.TrimSpace(strings.ToLower(response))
+
+		switch response {
+		case "yes", "y":
+			return true, nil
+		case "no", "n":
+			return false, nil
+		default:
+			fmt.Println("Please answer 'yes' or 'no'.")
+		}
+	}
+}
+
 func getGitStatusOutput(repoPath string) (string, error) {
 	cmd := exec.Command("git", "status")
 	cmd.Dir = repoPath

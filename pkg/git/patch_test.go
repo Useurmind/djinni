@@ -30,13 +30,15 @@ func TestCreatePatch(t *testing.T) {
 	require.NoError(t, execCommand("git", []string{"commit", "-m", "Initial commit"}, sourceDir))
 	require.NoError(t, execCommand("git", []string{"branch", "-M", "main"}, sourceDir))
 
+	require.NoError(t, execCommand("git", []string{"checkout", "-b", "feature/test"}, sourceDir))
+
 	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "new_file.txt"), []byte("test content"), 0644))
 	require.NoError(t, execCommand("git", []string{"add", "."}, sourceDir))
 	require.NoError(t, execCommand("git", []string{"commit", "-m", "Add new file"}, sourceDir))
 
 	patchDir := filepath.Join(tempDir, "patches")
 	require.NoError(t, os.MkdirAll(patchDir, 0755))
-	err = CreatePatch(sourceDir, "main", patchDir)
+	err = CreatePatch(sourceDir, patchDir)
 	require.NoError(t, err)
 
 	patches, err := filepath.Glob(filepath.Join(patchDir, "*.patch"))
@@ -68,13 +70,15 @@ func TestApplyPatch(t *testing.T) {
 	require.NoError(t, execCommand("git", []string{"commit", "-m", "Initial commit"}, sourceDir))
 	require.NoError(t, execCommand("git", []string{"branch", "-M", "main"}, sourceDir))
 
+	require.NoError(t, execCommand("git", []string{"checkout", "-b", "feature/test"}, sourceDir))
+
 	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "new_file.txt"), []byte("test content"), 0644))
 	require.NoError(t, execCommand("git", []string{"add", "."}, sourceDir))
 	require.NoError(t, execCommand("git", []string{"commit", "-m", "Add new file"}, sourceDir))
 
 	patchDir := filepath.Join(tempDir, "patches")
 	require.NoError(t, os.MkdirAll(patchDir, 0755))
-	err = CreatePatch(sourceDir, "main", patchDir)
+	err = CreatePatch(sourceDir, patchDir)
 	require.NoError(t, err)
 
 	patches, err := filepath.Glob(filepath.Join(patchDir, "*.patch"))
@@ -135,6 +139,8 @@ func TestCreatePatchAndApplyIntegration(t *testing.T) {
 	require.NoError(t, execCommand("git", []string{"commit", "-m", "Initial commit"}, sourceDir))
 	require.NoError(t, execCommand("git", []string{"branch", "-M", "main"}, sourceDir))
 
+	require.NoError(t, execCommand("git", []string{"checkout", "-b", "feature/test"}, sourceDir))
+
 	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "file1.txt"), []byte("content1"), 0644))
 	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "file2.txt"), []byte("content2"), 0644))
 	require.NoError(t, execCommand("git", []string{"add", "."}, sourceDir))
@@ -142,7 +148,7 @@ func TestCreatePatchAndApplyIntegration(t *testing.T) {
 
 	patchDir := filepath.Join(tempDir, "patches")
 	require.NoError(t, os.MkdirAll(patchDir, 0755))
-	err = CreatePatch(sourceDir, "main", patchDir)
+	err = CreatePatch(sourceDir, patchDir)
 	require.NoError(t, err)
 
 	patches, err := filepath.Glob(filepath.Join(patchDir, "*.patch"))
