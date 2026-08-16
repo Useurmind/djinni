@@ -47,8 +47,8 @@ Sensitive configuration can be mounted as read-only:
 
 ```yaml
 mounts:
-  - source: ~/.gitconfig
-    destination: /home/agent/.gitconfig
+  - source: ~/.kube/config
+    destination: /home/agent/.kube/config
     readOnly: true
 ```
 
@@ -60,6 +60,8 @@ This prevents:
 ### File Copy Mechanism
 
 Critical files (like `.gitconfig`, SSH keys) are copied into the container rather than mounted:
+
+(The gitconfig is automatically copied to the agent container with this mechanism, no need to configure it here)
 
 ```yaml
 files_to_copy:
@@ -135,9 +137,6 @@ agents:
       - source: ~/.config/opencode
         destination: /home/agent/.config/opencode
         readOnly: true
-    files_to_copy:
-      - source: ~/.gitconfig
-        destination: /home/agent/.gitconfig
 ```
 
 ### Benefits of TUI in Container
