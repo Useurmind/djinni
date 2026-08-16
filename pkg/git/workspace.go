@@ -11,7 +11,7 @@ import (
 )
 
 func CloneToTemp(sourceDir, baseDir, agentName, taskName string) (string, error) {
-	repoName, err := getRepoName(sourceDir)
+	repoName, err := GetRepoName(sourceDir)
 	if err != nil {
 		return "", err
 	}
@@ -53,7 +53,7 @@ func CheckoutNewBranch(repoPath, taskName string) error {
 	return nil
 }
 
-func getRepoName(dir string) (string, error) {
+func GetRepoName(dir string) (string, error) {
 	absDir, err := filepath.Abs(dir)
 	if err != nil {
 		return "", err

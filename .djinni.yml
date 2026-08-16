@@ -16,9 +16,11 @@ agents:
       - source: /home/jgruen/.local/share/opencode
         destination: /home/agent/.local/share/opencode
     tmpfsMounts:
-      - destination: /home/agent
       - destination: /cache
         size: "512m"
+    writablePaths:
+      - name: home
+        destination: /home/agent
   registry-agent:
     harness_command:
       - python

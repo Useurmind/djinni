@@ -152,6 +152,73 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "agent with valid writablePaths",
+			config: &Config{
+				Agents: map[string]*AgentConfig{
+					"test": {
+						Image:          "test-image",
+						HarnessCommand: []string{"echo", "test"},
+						WritablePaths: []WritablePath{
+							{
+								Name:        "home",
+								Destination: "/home/agent",
+							},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "agent with writablePaths missing name",
+			config: &Config{
+				Agents: map[string]*AgentConfig{
+					"test": {
+						Image:          "test-image",
+						HarnessCommand: []string{"echo", "test"},
+						WritablePaths: []WritablePath{
+							{
+								Name:        "",
+								Destination: "/home/agent",
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "agent with writablePaths missing destination",
+			config: &Config{
+				Agents: map[string]*AgentConfig{
+					"test": {
+						Image:          "test-image",
+						HarnessCommand: []string{"echo", "test"},
+						WritablePaths: []WritablePath{
+							{
+								Name:        "home",
+								Destination: "",
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "agent with writablePaths but empty array",
+			config: &Config{
+				Agents: map[string]*AgentConfig{
+					"test": {
+						Image:          "test-image",
+						HarnessCommand: []string{"echo", "test"},
+						WritablePaths:  []WritablePath{},
+					},
+				},
+			},
+			wantErr: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -205,6 +272,8 @@ func TestAgentConfig_YAMLTags(t *testing.T) {
 		Mounts:         []Mount{{"/src", "/dst", true}},
 		FilesToCopy:    []FilesToCopy{{"/src", "/dst"}},
 		DefaultModel:   "mymodel",
+		WritablePaths:  []WritablePath{{"home", "/home/agent"}},
+		TmpfsMounts:    []TmpfsMount{{"/tmp", "1g"}},
 	}
 	if len(c.HarnessCommand) != 1 {
 		t.Errorf("Expected 1 harness command, got %d", len(c.HarnessCommand))
@@ -223,6 +292,12 @@ func TestAgentConfig_YAMLTags(t *testing.T) {
 	}
 	if c.DefaultModel != "mymodel" {
 		t.Errorf("Expected default model 'mymodel', got '%s'", c.DefaultModel)
+	}
+	if len(c.WritablePaths) != 1 {
+		t.Errorf("Expected 1 writablePath, got %d", len(c.WritablePaths))
+	}
+	if len(c.TmpfsMounts) != 1 {
+		t.Errorf("Expected 1 tmpfsMount, got %d", len(c.TmpfsMounts))
 	}
 }
 

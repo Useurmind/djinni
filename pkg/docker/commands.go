@@ -1,14 +1,15 @@
 package docker
 
 type TmpfsMount struct {
-	Destination string `yaml:"destination"`
-	Size        string `yaml:"size,omitempty"`
+	Destination string
+	Size        string
 }
 
 type ContainerCommands struct {
-	PreCommands          []string `yaml:"pre,omitempty"`
-	PostCommands         []string `yaml:"post,omitempty"`
+	PreCommands          []string
+	PostCommands         []string
 	FilesToCopy          []FilesToCopy
 	ForceReadOnlyRootOff bool
 	TmpfsMounts          []TmpfsMount
+	WritablePaths        []WritablePath
 }

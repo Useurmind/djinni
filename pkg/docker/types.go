@@ -10,3 +10,8 @@ type FilesToCopy struct {
 	Source      string
 	Destination string
 }
+
+type WritablePath struct {
+	Name        string
+	Destination string
+}

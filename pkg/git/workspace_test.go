@@ -42,7 +42,7 @@ func TestGetRepoName(t *testing.T) {
 	repoPath := filepath.Join(tempDir, "my-repo")
 	require.NoError(t, os.MkdirAll(repoPath, 0755))
 
-	name, err := getRepoName(repoPath)
+	name, err := GetRepoName(repoPath)
 	require.NoError(t, err)
 	assert.Equal(t, "my-repo", name)
 }
@@ -52,7 +52,7 @@ func TestGetRepoNameWithNestedPath(t *testing.T) {
 	repoPath := filepath.Join(tempDir, "parent", "my-repo")
 	require.NoError(t, os.MkdirAll(repoPath, 0755))
 
-	name, err := getRepoName(repoPath)
+	name, err := GetRepoName(repoPath)
 	require.NoError(t, err)
 	assert.Equal(t, "my-repo", name)
 }
@@ -61,7 +61,7 @@ func TestGetRepoNameInvalidPath(t *testing.T) {
 	tempDir := t.TempDir()
 	nonExistent := filepath.Join(tempDir, "does-not-exist")
 
-	_, err := getRepoName(nonExistent)
+	_, err := GetRepoName(nonExistent)
 	assert.Error(t, err)
 }
 
@@ -70,6 +70,6 @@ func TestGetRepoNameFileNotDir(t *testing.T) {
 	filePath := filepath.Join(tempDir, "file.txt")
 	require.NoError(t, os.WriteFile(filePath, []byte("test"), 0644))
 
-	_, err := getRepoName(filePath)
+	_, err := GetRepoName(filePath)
 	assert.Error(t, err)
 }

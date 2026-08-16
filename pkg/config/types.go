@@ -26,6 +26,8 @@ type AgentConfig struct {
 	ForceReadOnlyRootOff bool `yaml:"forceReadOnlyRootOff"`
 	// TmpfsMounts specifies tmpfs mounts for the container (e.g., /tmp, /cache)
 	TmpfsMounts []TmpfsMount `yaml:"tmpfsMounts,omitempty"`
+	// WritablePaths specifies paths that should be writable with content from the container image
+	WritablePaths []WritablePath `yaml:"writablePaths,omitempty"`
 }
 
 // Mount represents a volume mount from host to container
@@ -50,6 +52,14 @@ type TmpfsMount struct {
 	Destination string `yaml:"destination"`
 	// Size is the maximum size of the tmpfs in bytes or with suffix (e.g., "512m", "1g")
 	Size string `yaml:"size,omitempty"`
+}
+
+// WritablePath configures a writable path backed by overlayfs
+type WritablePath struct {
+	// Name is the unique identifier for this writable path
+	Name string `yaml:"name"`
+	// Destination is the path inside the container (required)
+	Destination string `yaml:"destination"`
 }
 
 // FilesToCopy represents a file to copy into the container
@@ -118,6 +128,14 @@ func (c *Config) Validate() error {
 		for _, tmpfs := range agent.TmpfsMounts {
 			if tmpfs.Destination == "" {
 				return fmt.Errorf("agent '%s': tmpfsMounts.destination is required", name)
+			}
+		}
+		for _, writablePath := range agent.WritablePaths {
+			if writablePath.Name == "" {
+				return fmt.Errorf("agent '%s': writablePaths.name is required", name)
+			}
+			if writablePath.Destination == "" {
+				return fmt.Errorf("agent '%s': writablePaths.destination is required", name)
 			}
 		}
 	}

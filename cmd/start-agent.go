@@ -113,6 +113,26 @@ func prepareWorkspace(agentCfg *config.AgentConfig, cwd, agentName, taskName str
 		commands.FilesToCopy = filesToCopy
 	}
 
+	_, err = os.Getwd()
+	if err != nil {
+		return nil, "", nil, nil, "", fmt.Errorf("failed to get current directory: %w", err)
+	}
+	repoName, err := git.GetRepoName(cwd)
+	if err != nil {
+		return nil, "", nil, nil, "", fmt.Errorf("failed to get repo name: %w", err)
+	}
+
+	for _, wp := range agentCfg.WritablePaths {
+		overlayMountPath, err := client.SetupOverlayMount(repoName, agentName, taskName, wp.Name, wp.Destination)
+		if err != nil {
+			return nil, "", nil, nil, "", fmt.Errorf("failed to setup overlay mount for %s: %w", wp.Name, err)
+		}
+		agentCfg.Mounts = append(agentCfg.Mounts, config.Mount{
+			Source:      overlayMountPath,
+			Destination: wp.Destination,
+		})
+	}
+
 	if workspacePath != "" {
 		log.Info(fmt.Sprintf("Using local workspace: %s", workspacePath))
 		if err := git.CheckoutNewBranch(workspacePath, taskName); err != nil {
@@ -188,6 +208,13 @@ func setupWorkspace(agentCfg *config.AgentConfig, cwd, agentName, taskName strin
 		commands.TmpfsMounts = append(commands.TmpfsMounts, docker.TmpfsMount{
 			Destination: tmpfs.Destination,
 			Size:        tmpfs.Size,
+		})
+	}
+
+	for _, wp := range agentCfg.WritablePaths {
+		commands.WritablePaths = append(commands.WritablePaths, docker.WritablePath{
+			Name:        wp.Name,
+			Destination: wp.Destination,
 		})
 	}
 

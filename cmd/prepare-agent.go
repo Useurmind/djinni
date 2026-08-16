@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/useurmind/djinni/pkg/config"
 	"github.com/useurmind/djinni/pkg/docker"
+	"github.com/useurmind/djinni/pkg/git"
 	"github.com/useurmind/djinni/pkg/log"
 )
 
@@ -49,6 +50,39 @@ var prepareAgentCmd = &cobra.Command{
 		}
 
 		log.Info(fmt.Sprintf("Image specified, nothing to prepare: %s", agentCfg.Image))
+
+		if len(agentCfg.WritablePaths) > 0 {
+			log.Info("Setting up writable paths with overlayfs...")
+			client, err := docker.NewClient()
+			if err != nil {
+				return fmt.Errorf("failed to initialize container client: %w", err)
+			}
+
+			cwd, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("failed to get current directory: %w", err)
+			}
+			repoName, err := git.GetRepoName(cwd)
+			if err != nil {
+				return fmt.Errorf("failed to get repo name: %w", err)
+			}
+
+			image := fmt.Sprintf("djinni-%s:latest", agentName)
+			if agentCfg.Image != "" {
+				image = agentCfg.Image
+			}
+
+			for _, wp := range agentCfg.WritablePaths {
+				dockerWp := docker.WritablePath{
+					Name:        wp.Name,
+					Destination: wp.Destination,
+				}
+				if err := client.PrepareWritablePaths(repoName, agentName, []docker.WritablePath{dockerWp}, image); err != nil {
+					return fmt.Errorf("failed to prepare writable path %s: %w", wp.Name, err)
+				}
+			}
+		}
+
 		return nil
 	},
 }

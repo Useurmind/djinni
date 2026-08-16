@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/useurmind/djinni/pkg/config"
@@ -34,6 +35,62 @@ func (c *Client) RunContainer(image string, cmd []string, name string, mounts []
 	}
 
 	return c.runContainer(image, cmd, name, mounts, commands)
+}
+
+func (c *Client) PrepareWritablePaths(repoName, agentName string, writablePaths []WritablePath, image string) error {
+	for _, wp := range writablePaths {
+		if err := CreateOverlayStructure(repoName, agentName, wp.Name); err != nil {
+			return fmt.Errorf("failed to create overlay structure for %s: %w", wp.Name, err)
+		}
+
+		lowerDir := GetLowerDir(repoName, agentName, wp.Name)
+		if err := CopyImageFolderToLower(c, image, wp.Destination, lowerDir); err != nil {
+			return fmt.Errorf("failed to copy image folder to lower for %s: %w", wp.Name, err)
+		}
+	}
+
+	return nil
+}
+
+func (c *Client) SetupOverlayMount(repoName, agentName, taskName, writablePathName, destination string) (string, error) {
+	lowerDir := GetLowerDir(repoName, agentName, writablePathName)
+	upperDir := GetUpperDir(repoName, agentName, writablePathName, taskName)
+	workDir := GetWorkDir(repoName, agentName, writablePathName, taskName)
+
+	if err := os.MkdirAll(upperDir, 0755); err != nil {
+		return "", fmt.Errorf("failed to create upper directory %s: %w", upperDir, err)
+	}
+
+	if err := os.MkdirAll(workDir, 0755); err != nil {
+		return "", fmt.Errorf("failed to create work directory %s: %w", workDir, err)
+	}
+
+	tempMount := filepath.Join(workDir, "mnt")
+	if err := os.MkdirAll(tempMount, 0755); err != nil {
+		return "", fmt.Errorf("failed to create temp mount directory %s: %w", tempMount, err)
+	}
+
+	err := exec.Command("mount", "-t", "overlay", "overlay",
+		"-o", fmt.Sprintf("lowerdir=%s,upperdir=%s,workdir=%s", lowerDir, upperDir, workDir),
+		tempMount).Run()
+	if err != nil {
+		return "", fmt.Errorf("failed to mount overlayfs: %w", err)
+	}
+
+	return tempMount, nil
+}
+
+func (c *Client) CleanupOverlayMount(repoName, agentName, taskName, writablePathName string) error {
+	workDir := GetWorkDir(repoName, agentName, writablePathName, taskName)
+
+	tempMount := filepath.Join(workDir, "mnt")
+
+	cmd := exec.Command("umount", tempMount)
+	if err := cmd.Run(); err != nil {
+		log.Error(fmt.Sprintf("Failed to unmount %s: %v", tempMount, err))
+	}
+
+	return CleanupOverlay(repoName, agentName, writablePathName, taskName)
 }
 
 func (c *Client) BuildContainer(name string, containerfile string) (int, error) {
