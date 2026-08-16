@@ -1,12 +1,12 @@
 package git
 
 import (
-	"bufio"
+	"errors"
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
 
+	"github.com/charmbracelet/huh"
 	"github.com/useurmind/djinni/pkg/log"
 )
 
@@ -46,115 +46,87 @@ func PromptCommitChanges(repoPath string, configPath string) (CommitMode, string
 	fmt.Println()
 	log.Info("Changes will not be included in the container unless committed.")
 
-	reader := bufio.NewReader(os.Stdin)
+	var confirm bool
+	confirmField := huh.NewConfirm().
+		Title("Commit changes before starting the agent?").
+		Affirmative("Yes").Negative("No").
+		Value(&confirm)
 
-	for {
-		fmt.Print("Commit changes before starting the agent? (yes/no): ")
-		response, err := reader.ReadString('\n')
-		if err != nil {
-			return CommitModeNone, "", fmt.Errorf("failed to read input: %w", err)
-		}
-
-		response = strings.TrimSpace(strings.ToLower(response))
-
-		switch response {
-		case "yes", "y":
-			mode, msg, err := promptCommitMode(repoPath, configPath)
-			if err != nil {
-				return CommitModeNone, "", err
-			}
-			return mode, msg, nil
-		case "no", "n":
-			log.Info("Proceeding without committing changes.")
-			return CommitModeNone, "", nil
-		default:
-			fmt.Println("Please answer 'yes' or 'no'.")
-		}
+	if err := confirmField.Run(); err != nil {
+		return CommitModeNone, "", fmt.Errorf("failed to prompt for commit: %w", err)
 	}
-}
 
-func promptCommitMode(repoPath string, configPath string) (CommitMode, string, error) {
-	reader := bufio.NewReader(os.Stdin)
-
-	for {
-		fmt.Print("Use AI to generate commit message? (yes/no): ")
-		response, err := reader.ReadString('\n')
-		if err != nil {
-			return CommitModeNone, "", fmt.Errorf("failed to read input: %w", err)
-		}
-
-		response = strings.TrimSpace(strings.ToLower(response))
-
-		switch response {
-		case "yes", "y":
-			return CommitModeAI, "", nil
-		case "no", "n":
-			log.Info("Please enter your commit message:")
-			fmt.Print("> ")
-			commitMsg, err := reader.ReadString('\n')
-			if err != nil {
-				return CommitModeNone, "", fmt.Errorf("failed to read commit message: %w", err)
-			}
-			commitMsg = strings.TrimSpace(commitMsg)
-			if commitMsg == "" {
-				fmt.Println("Commit message cannot be empty. Please try again.")
-				continue
-			}
-			return CommitModeManual, commitMsg, nil
-		default:
-			fmt.Println("Please answer 'yes' or 'no'.")
-		}
+	if !confirm {
+		log.Info("Proceeding without committing changes.")
+		return CommitModeNone, "", nil
 	}
+
+	var mode string
+	modeField := huh.NewSelect[string]().
+		Title("How to generate commit message?").
+		Options(
+			huh.NewOption("Use AI to generate", "ai"),
+			huh.NewOption("Write manually", "manual"),
+		).
+		Value(&mode)
+
+	if err := modeField.Run(); err != nil {
+		return CommitModeNone, "", fmt.Errorf("failed to prompt for commit mode: %w", err)
+	}
+
+	if mode == "ai" {
+		return CommitModeAI, "", nil
+	}
+
+	var msg string
+	inputField := huh.NewInput().
+		Title("Enter commit message").
+		Prompt("> ").
+		Value(&msg).
+		Validate(func(s string) error {
+			if strings.TrimSpace(s) == "" {
+				return errors.New("message cannot be empty")
+			}
+			return nil
+		})
+
+	if err := inputField.Run(); err != nil {
+		return CommitModeNone, "", fmt.Errorf("failed to enter commit message: %w", err)
+	}
+
+	return CommitModeManual, msg, nil
 }
 
 func PromptSyncApproach() (string, error) {
-	reader := bufio.NewReader(os.Stdin)
+	var syncApproach string
+	syncField := huh.NewSelect[string]().
+		Title("Select sync approach").
+		Options(
+			huh.NewOption("none", "none"),
+			huh.NewOption("gitpatch", "gitpatch"),
+			huh.NewOption("automerge", "automerge"),
+		).
+		Value(&syncApproach)
 
-	for {
-		fmt.Println()
-		fmt.Println("Select sync approach:")
-		fmt.Println("  none      - Leave changes on feature branch, no automatic sync")
-		fmt.Println("  gitpatch  - Apply patch of changes to workspace (no commit)")
-		fmt.Println("  automerge - Merge feature branch into current branch")
-		fmt.Print("Choice (none/gitpatch/automerge): ")
-
-		response, err := reader.ReadString('\n')
-		if err != nil {
-			return "", fmt.Errorf("failed to read input: %w", err)
-		}
-
-		response = strings.TrimSpace(strings.ToLower(response))
-
-		switch response {
-		case "none", "gitpatch", "automerge":
-			return response, nil
-		default:
-			fmt.Println("Please choose 'none', 'gitpatch', or 'automerge'.")
-		}
+	if err := syncField.Run(); err != nil {
+		return "none", fmt.Errorf("failed to select sync approach: %w", err)
 	}
+
+	return syncApproach, nil
 }
 
 func PromptAutoDeleteBranch() (bool, error) {
-	reader := bufio.NewReader(os.Stdin)
+	var autodelete bool
+	deleteField := huh.NewConfirm().
+		Title("Delete agent feature branch after sync?").
+		Affirmative("Yes").Negative("No").
+		Value(&autodelete)
 
-	for {
-		fmt.Print("Delete agent feature branch after sync? (yes/no): ")
-		response, err := reader.ReadString('\n')
-		if err != nil {
-			return false, fmt.Errorf("failed to read input: %w", err)
-		}
-
-		response = strings.TrimSpace(strings.ToLower(response))
-
-		switch response {
-		case "yes", "y":
-			return true, nil
-		case "no", "n":
-			return false, nil
-		default:
-			fmt.Println("Please answer 'yes' or 'no'.")
-		}
+	if err := deleteField.Run(); err != nil {
+		return false, fmt.Errorf("failed to prompt for autodelete: %w", err)
 	}
+
+	return autodelete, nil
 }
 
 func getGitStatusOutput(repoPath string) (string, error) {

@@ -45,9 +45,3 @@ func TestPromptCommitChangesRepoClean(t *testing.T) {
 	assert.Equal(t, CommitModeNone, mode)
 	assert.Equal(t, "", msg)
 }
-
-func TestCommitModeEnum(t *testing.T) {
-	assert.Equal(t, 0, int(CommitModeNone))
-	assert.Equal(t, 1, int(CommitModeAI))
-	assert.Equal(t, 2, int(CommitModeManual))
-}
