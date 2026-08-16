@@ -354,11 +354,16 @@ func commitUncommittedChanges(cwd, configPath string) error {
 			defaultModel = cfg.DefaultModel
 		}
 
+		provider, model, err := config.FindModelGlobal(globalCfg, defaultModel, "")
+		if err != nil {
+			return fmt.Errorf("failed to find model '%s': %w", defaultModel, err)
+		}
+
 		aiAgent := &ai.Agent{
 			WorkingDir: cwd,
 			ReadPaths:  []string{cwd},
-			Provider:   &globalCfg.ModelProviders[0],
-			ModelID:    defaultModel,
+			Provider:   provider,
+			ModelID:    model.ID,
 		}
 
 		msg, err = aiAgent.Execute()
@@ -394,15 +399,16 @@ func generateCommitMessage(workingDir, defaultModel string) (string, error) {
 		return "", fmt.Errorf("no model providers configured in global config")
 	}
 
+	provider, model, err := config.FindModelGlobal(globalCfg, defaultModel, "")
+	if err != nil {
+		return "", fmt.Errorf("failed to find model '%s': %w", defaultModel, err)
+	}
+
 	aiAgent := &ai.Agent{
 		WorkingDir: workingDir,
 		ReadPaths:  []string{workingDir},
-		Provider:   &globalCfg.ModelProviders[0],
-		ModelID:    defaultModel,
-	}
-
-	if defaultModel != "" {
-		aiAgent.ModelID = defaultModel
+		Provider:   provider,
+		ModelID:    model.ID,
 	}
 
 	commitMsg, err := aiAgent.Execute()
