@@ -105,3 +105,5 @@ Djinni provides a framework to manage AI agents in isolated Docker environments.
 ## License
 
 MIT
+
+yes
