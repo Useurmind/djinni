@@ -27,6 +27,8 @@ djinni --debug
 
 ### Configuration
 
+See [Configuration Guide](docs/configuration.md) for detailed documentation.
+
 Create `.djinni.yml` in your project root:
 
 ```yaml
@@ -51,6 +53,8 @@ agents:
 
 ### Global Configuration
 
+See [Configuration Guide](docs/configuration.md#global-configuration-djinniconfigconfigyaml) for detailed documentation.
+
 Create `~/.config/djinni/config.yaml` (or `$DJINNI_CONFIG_DIR/config.yaml`) for model providers:
 
 ```yaml
@@ -64,6 +68,8 @@ modelProviders:
 
 ### Sync Approaches
 
+See [Configuration Guide](docs/configuration.md#agent-configurationsync_approach-string-optional) for detailed documentation.
+
 | Approach | Description |
 |----------|-------------|
 | `none` | No sync; leave changes on `feature/<task>` branch in your workspace |
@@ -71,6 +77,8 @@ modelProviders:
 | `automerge` | Merge `feature/<task>` branch directly into current local branch |
 
 ### Agent Options
+
+See [Configuration Guide](docs/configuration.md#agent-configurations) for detailed documentation.
 
 | Option | Description |
 |--------|-------------|
