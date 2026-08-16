@@ -104,6 +104,10 @@ See [Configuration Guide](docs/configuration.md#agent-configurations) for detail
 
 Djinni provides a framework to manage AI agents in isolated Docker environments. Each agent runs in its own container, ensuring security isolation, resource limits, and clean dependencies.
 
+## Security and Isolation
+
+See [Security and Isolation](docs/security.md) for detailed documentation on container-based security, non-root user execution, volume mounts, and comparison with VS Code agent isolation.
+
 ## Features
 
 - **Container isolation**: Each agent runs in a separate Docker container
