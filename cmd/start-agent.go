@@ -277,8 +277,14 @@ func commitAndPushFromAgent(agentCfg *config.AgentConfig, branchName, workspaceP
 }
 
 func syncWithPatch(agentCfg *config.AgentConfig, branchName, workspacePath, cwd string, autodelete bool) error {
-	patchDir := filepath.Join(filepath.Dir(cwd), "patches")
-	if err := git.CreatePatch(cwd, patchDir); err != nil {
+	patchDir := "/tmp/djinni/patches"
+	err := os.RemoveAll(patchDir)
+	if err != nil {
+		log.Error(fmt.Sprintf("Failed to remove patch directory: %v", err))
+		return err
+	}
+
+	if err := git.CreatePatch(workspacePath, patchDir); err != nil {
 		log.Error(fmt.Sprintf("Failed to create patch: %v", err))
 		return err
 	}
