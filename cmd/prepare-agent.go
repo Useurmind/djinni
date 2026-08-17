@@ -57,7 +57,7 @@ var prepareAgentCmd = &cobra.Command{
 				return nil
 			}
 		}
-		
+
 		if len(agentCfg.WritablePaths) > 0 {
 			log.Info("Setting up writable paths with overlayfs...")
 

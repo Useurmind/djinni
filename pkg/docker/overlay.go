@@ -71,10 +71,42 @@ func CopyImageFolderToLower(client *Client, image, imageSourcePath, lowerDir str
 		_ = exec.Command(client.Binary, "rm", "-f", tempContainerID).Run()
 	}()
 
-	cmd = exec.Command(client.Binary, "cp", tempContainerID+":"+imageSourcePath, lowerDir)
+	sourceBasename := filepath.Base(imageSourcePath)
+	tempCopyDir := filepath.Join(lowerDir, ".tmp_copy")
+	if err := os.MkdirAll(tempCopyDir, 0755); err != nil {
+		return fmt.Errorf("failed to create temp copy directory %s: %w", tempCopyDir, err)
+	}
+
+	cmd = exec.Command(client.Binary, "cp", tempContainerID+":"+imageSourcePath, tempCopyDir)
 	output, err = cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to copy %s from container: %w, output: %s", imageSourcePath, err, strings.TrimSpace(string(output)))
+	}
+
+	srcDir := filepath.Join(tempCopyDir, sourceBasename)
+	err = filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		relPath, err := filepath.Rel(srcDir, path)
+		if err != nil {
+			return err
+		}
+		if relPath == "." {
+			return nil
+		}
+		destPath := filepath.Join(lowerDir, relPath)
+		if info.IsDir() {
+			return os.MkdirAll(destPath, info.Mode())
+		}
+		return os.Rename(path, destPath)
+	})
+	if err != nil {
+		return fmt.Errorf("failed to move copied contents to lower directory: %w", err)
+	}
+
+	if err := os.RemoveAll(tempCopyDir); err != nil {
+		return fmt.Errorf("failed to clean up temp copy directory: %w", err)
 	}
 
 	log.Info(fmt.Sprintf("Copied %s to lower directory", imageSourcePath))

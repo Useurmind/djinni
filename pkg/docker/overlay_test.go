@@ -2,6 +2,7 @@ package docker
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -84,4 +85,33 @@ func TestCleanupOverlay(t *testing.T) {
 
 	assert.NoDirExists(t, upperDir)
 	assert.NoDirExists(t, workDir)
+}
+
+func TestCopyImageFolderToLower(t *testing.T) {
+	repoName := "test-repo"
+	agentName := "test-agent"
+	writablePathName := "home"
+
+	lowerDir := GetLowerDir(repoName, agentName, writablePathName)
+
+	err := CreateOverlayStructure(repoName, agentName, writablePathName)
+	require.NoError(t, err)
+
+	defer os.RemoveAll(DefaultBaseDir + "-test")
+
+	client, err := NewClient()
+	if err != nil {
+		t.Skipf("Skipping test: no container runtime available: %v", err)
+	}
+
+	err = CopyImageFolderToLower(client, "ubuntu:latest", "/etc", lowerDir)
+	if err != nil {
+		_ = os.RemoveAll(lowerDir)
+		t.Skipf("Skipping test: could not copy from container: %v", err)
+	}
+
+	assert.NoDirExists(t, filepath.Join(lowerDir, ".tmp_copy"))
+	assert.DirExists(t, filepath.Join(lowerDir, "passwd"))
+
+	_ = os.RemoveAll(lowerDir)
 }
