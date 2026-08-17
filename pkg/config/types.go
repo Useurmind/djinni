@@ -2,6 +2,10 @@ package config
 
 import "fmt"
 
+const (
+	DefaultGitWorkspaceBase = "/tmp/djinni"
+)
+
 // AgentConfig defines the configuration for an AI agent
 type AgentConfig struct {
 	// HarnessCommand is the command to run inside the container (required)
@@ -120,7 +124,7 @@ func (c *Config) Validate() error {
 			return fmt.Errorf("agent '%s': harness_command is required", name)
 		}
 		if agent.GitWorkspace.BaseDirectory == "" {
-			agent.GitWorkspace.BaseDirectory = "/tmp/djinni"
+			agent.GitWorkspace.BaseDirectory = DefaultGitWorkspaceBase
 		}
 		if agent.SyncApproach != "" && agent.SyncApproach != "none" && agent.SyncApproach != "gitpatch" && agent.SyncApproach != "automerge" {
 			return fmt.Errorf("agent '%s': sync_approach must be 'none', 'gitpatch', or 'automerge'", name)

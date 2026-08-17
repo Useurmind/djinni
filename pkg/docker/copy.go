@@ -11,6 +11,11 @@ import (
 	"github.com/useurmind/djinni/pkg/log"
 )
 
+const (
+	DefaultAgentHome   = "/home/agent"
+	DefaultAgentMarker = DefaultAgentHome + "/.copydone"
+)
+
 func CopyFilesAsync(containerID string, files []FilesToCopy, client *Client) chan error {
 	errChan := make(chan error, 1)
 
@@ -100,7 +105,7 @@ func getHostPathForSource(source string) (string, error) {
 }
 
 func createMarkerFile(containerID string, client *Client) error {
-	cmd := exec.Command(client.Binary, "exec", containerID, "mkdir", "-p", "/home/agent", "&&", "touch", "/home/agent/.copydone")
+	cmd := exec.Command(client.Binary, "exec", containerID, "mkdir", "-p", DefaultAgentHome, "&&", "touch", DefaultAgentMarker)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Error(fmt.Sprintf("Failed to create marker file: %s", string(output)))

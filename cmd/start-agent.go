@@ -153,7 +153,7 @@ func setupWorkspace(agentCfg *config.AgentConfig, cwd, agentName, taskName strin
 
 	image = agentCfg.Image
 	if agentCfg.Containerfile != "" {
-		image = fmt.Sprintf("djinni-%s:latest", agentName)
+		image = fmt.Sprintf(docker.ImageTagFormat, agentName)
 		log.Info(fmt.Sprintf("Using local image: %s", image))
 	}
 

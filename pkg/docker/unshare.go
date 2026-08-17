@@ -9,7 +9,7 @@ import (
 	"github.com/useurmind/djinni/pkg/log"
 )
 
-func RunInMountNamespace(cmd []string, mounts []WritablePath, destination string) error {
+func RunInMountNamespace(repoName, agentName, taskName string, cmd []string, mounts []WritablePath, destination string) error {
 	log.Info("Running in mount namespace with unshare -rm")
 
 	args := []string{"-rm", "bash", "-c"}
@@ -18,12 +18,12 @@ func RunInMountNamespace(cmd []string, mounts []WritablePath, destination string
 	overlayCmd.WriteString("set -e\n")
 
 	for _, wp := range mounts {
-		upperDir := GetUpperDir("repo", "agent", wp.Name, "task")
-		workDir := GetWorkDir("repo", "agent", wp.Name, "task")
+		upperDir := GetUpperDir(repoName, agentName, wp.Name, taskName)
+		workDir := GetWorkDir(repoName, agentName, wp.Name, taskName)
 
 		fmt.Fprintf(overlayCmd, "mkdir -p %s %s\n", upperDir, workDir)
 
-		lowerDir := GetLowerDir("repo", "agent", wp.Name)
+		lowerDir := GetLowerDir(repoName, agentName, wp.Name)
 		fmt.Fprintf(overlayCmd, "mount -t overlay overlay -o lowerdir=%s,upperdir=%s,workdir=%s %s\n",
 			lowerDir, upperDir, workDir, destination)
 	}

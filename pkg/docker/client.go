@@ -11,6 +11,8 @@ import (
 	"github.com/useurmind/djinni/pkg/log"
 )
 
+const ImageTagFormat = "djinni-%s:latest"
+
 type Client struct {
 	Type   string
 	Binary string
@@ -98,7 +100,7 @@ func (c *Client) BuildContainer(name string, containerfile string) (int, error) 
 		return 1, fmt.Errorf("containerfile '%s' does not exist", containerfile)
 	}
 
-	args := []string{"build", "-f", containerfile, "-t", fmt.Sprintf("djinni-%s:latest", name), "."}
+	args := []string{"build", "-f", containerfile, "-t", fmt.Sprintf(ImageTagFormat, name), "."}
 
 	log.Info(fmt.Sprintf("Building container: %s", name))
 	log.Info(fmt.Sprintf("Building from: %s", containerfile))
@@ -116,7 +118,7 @@ func (c *Client) BuildContainer(name string, containerfile string) (int, error) 
 		}
 		return 1, fmt.Errorf("build failed: %w", err)
 	}
-	log.Success(fmt.Sprintf("Built image: djinni-%s:latest", name))
+	log.Success(fmt.Sprintf("Built image: "+ImageTagFormat, name))
 	return 0, nil
 }
 
@@ -204,7 +206,7 @@ func (c *Client) generateEntrypoint(harnessCmd []string, commands *ContainerComm
 
 	if len(commands.FilesToCopy) > 0 {
 		builder.WriteString("echo 'Waiting for files to be copied...'\n")
-		builder.WriteString("while [ ! -e \"/home/agent/.copydone\" ]; do\n")
+		builder.WriteString("while [ ! -e \"" + DefaultAgentMarker + "\" ]; do\n")
 		builder.WriteString("  sleep 0.5\n")
 		builder.WriteString("done\n")
 		builder.WriteString("echo 'Files copied successfully'\n")

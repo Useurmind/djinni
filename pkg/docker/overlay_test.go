@@ -60,7 +60,7 @@ func TestCreateOverlayStructure(t *testing.T) {
 	err := CreateOverlayStructure(repoName, agentName, writablePathName)
 	require.NoError(t, err)
 
-	defer os.RemoveAll("/tmp/djinni-test")
+	defer os.RemoveAll(DefaultBaseDir + "-test")
 
 	assert.DirExists(t, lowerDir)
 }

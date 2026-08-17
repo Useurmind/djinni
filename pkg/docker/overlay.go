@@ -10,22 +10,31 @@ import (
 	"github.com/useurmind/djinni/pkg/log"
 )
 
-const djinniBaseDir = "/tmp/djinni"
+const TempContainerName = "djinni-temp-copy"
+
+const DefaultBaseDir = "/tmp/djinni"
+
+const (
+	WritablePathsSubdir = "writablePaths"
+	LowerSubdir         = "lower"
+	UpperSubdir         = "upper"
+	WorkSubdir          = "work"
+)
 
 func GetWritablePathDir(repoName, agentName, writablePathName string) string {
-	return filepath.Join(djinniBaseDir, repoName, agentName, "writablePaths", writablePathName)
+	return filepath.Join(DefaultBaseDir, repoName, agentName, WritablePathsSubdir, writablePathName)
 }
 
 func GetLowerDir(repoName, agentName, writablePathName string) string {
-	return filepath.Join(GetWritablePathDir(repoName, agentName, writablePathName), "lower")
+	return filepath.Join(GetWritablePathDir(repoName, agentName, writablePathName), LowerSubdir)
 }
 
 func GetUpperDir(repoName, agentName, writablePathName, taskName string) string {
-	return filepath.Join(GetWritablePathDir(repoName, agentName, writablePathName), "upper", taskName)
+	return filepath.Join(GetWritablePathDir(repoName, agentName, writablePathName), UpperSubdir, taskName)
 }
 
 func GetWorkDir(repoName, agentName, writablePathName, taskName string) string {
-	return filepath.Join(GetWritablePathDir(repoName, agentName, writablePathName), "work", taskName)
+	return filepath.Join(GetWritablePathDir(repoName, agentName, writablePathName), WorkSubdir, taskName)
 }
 
 func CreateOverlayStructure(repoName, agentName, writablePathName string) error {
@@ -51,7 +60,7 @@ func CopyImageFolderToLower(client *Client, image, imageSourcePath, lowerDir str
 		return fmt.Errorf("failed to create lower directory %s: %w", lowerDir, err)
 	}
 
-	cmd := exec.Command(client.Binary, "create", "--name", "djinni-temp-copy", image)
+	cmd := exec.Command(client.Binary, "create", "--name", TempContainerName, image)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to create temp container: %w, output: %s", err, strings.TrimSpace(string(output)))

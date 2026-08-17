@@ -67,7 +67,7 @@ var prepareAgentCmd = &cobra.Command{
 				return fmt.Errorf("failed to get repo name: %w", err)
 			}
 
-			image := fmt.Sprintf("djinni-%s:latest", agentName)
+			image := fmt.Sprintf(docker.ImageTagFormat, agentName)
 			if agentCfg.Image != "" {
 				image = agentCfg.Image
 			}
