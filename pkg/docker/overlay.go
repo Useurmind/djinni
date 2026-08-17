@@ -39,9 +39,8 @@ func GetWorkDir(repoName, agentName, writablePathName, taskName string) string {
 
 func CreateOverlayStructure(repoName, agentName, writablePathName string) error {
 	baseDir := GetWritablePathDir(repoName, agentName, writablePathName)
-	lowerDir := GetLowerDir(repoName, agentName, writablePathName)
 
-	paths := []string{baseDir, lowerDir}
+	paths := []string{baseDir}
 	for _, path := range paths {
 		if err := os.MkdirAll(path, 0755); err != nil {
 			return fmt.Errorf("failed to create directory %s: %w", path, err)
@@ -55,11 +54,6 @@ func CreateOverlayStructure(repoName, agentName, writablePathName string) error 
 func CopyImageFolderToLower(client *Client, image, imageSourcePath, lowerDir string) error {
 	log.Info(fmt.Sprintf("Copying %s from image %s to lower directory %s", imageSourcePath, image, lowerDir))
 
-	err := os.MkdirAll(lowerDir, 0755)
-	if err != nil {
-		return fmt.Errorf("failed to create lower directory %s: %w", lowerDir, err)
-	}
-
 	cmd := exec.Command(client.Binary, "create", "--name", TempContainerName, image)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -71,11 +65,13 @@ func CopyImageFolderToLower(client *Client, image, imageSourcePath, lowerDir str
 		_ = exec.Command(client.Binary, "rm", "-f", tempContainerID).Run()
 	}()
 
+	lowerParentDir := filepath.Dir(lowerDir)
 	sourceBasename := filepath.Base(imageSourcePath)
-	tempCopyDir := filepath.Join(lowerDir, ".tmp_copy")
+	tempCopyDir := filepath.Join(lowerParentDir, ".tmp_copy")
 	if err := os.MkdirAll(tempCopyDir, 0755); err != nil {
 		return fmt.Errorf("failed to create temp copy directory %s: %w", tempCopyDir, err)
 	}
+	defer os.RemoveAll(tempCopyDir)
 
 	cmd = exec.Command(client.Binary, "cp", tempContainerID+":"+imageSourcePath, tempCopyDir)
 	output, err = cmd.CombinedOutput()
@@ -83,30 +79,9 @@ func CopyImageFolderToLower(client *Client, image, imageSourcePath, lowerDir str
 		return fmt.Errorf("failed to copy %s from container: %w, output: %s", imageSourcePath, err, strings.TrimSpace(string(output)))
 	}
 
-	srcDir := filepath.Join(tempCopyDir, sourceBasename)
-	err = filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		relPath, err := filepath.Rel(srcDir, path)
-		if err != nil {
-			return err
-		}
-		if relPath == "." {
-			return nil
-		}
-		destPath := filepath.Join(lowerDir, relPath)
-		if info.IsDir() {
-			return os.MkdirAll(destPath, info.Mode())
-		}
-		return os.Rename(path, destPath)
-	})
+	err = os.Rename(filepath.Join(tempCopyDir, sourceBasename), lowerDir)
 	if err != nil {
 		return fmt.Errorf("failed to move copied contents to lower directory: %w", err)
-	}
-
-	if err := os.RemoveAll(tempCopyDir); err != nil {
-		return fmt.Errorf("failed to clean up temp copy directory: %w", err)
 	}
 
 	log.Info(fmt.Sprintf("Copied %s to lower directory", imageSourcePath))

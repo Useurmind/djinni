@@ -18,9 +18,9 @@ agents:
     tmpfsMounts:
       - destination: /cache
         size: "512m"
-    # writablePaths:
-    #   - name: home
-    #     destination: /home/agent
+    writablePaths:
+      - name: home
+        destination: /home/agent
   registry-agent:
     harness_command:
       - python
