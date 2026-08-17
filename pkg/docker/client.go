@@ -143,7 +143,7 @@ func (c *Client) runContainer(image string, cmd []string, name string, mounts []
 	entrypoint := c.generateEntrypoint(cmd, commands)
 	args := []string{"run", "--rm", "-it", "--network", "bridge", "--name", name}
 
-	if commands != nil && !commands.ForceReadOnlyRootOff {
+	if commands == nil || !commands.ForceReadOnlyRootOff {
 		args = append(args, "--read-only")
 	}
 
