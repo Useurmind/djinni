@@ -301,7 +301,7 @@ func TestBuildContainer(t *testing.T) {
 				path = "/nonexistent/path/Dockerfile"
 			}
 
-			exitCode, err := client.BuildContainer("test", path)
+			exitCode, err := client.BuildContainer("test", "test", path)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("BuildContainer() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -316,7 +316,7 @@ func TestBuildContainer(t *testing.T) {
 func TestBuildContainer_FileNotFound(t *testing.T) {
 	client := &Client{Binary: "docker"}
 
-	exitCode, err := client.BuildContainer("test", "/nonexistent/Dockerfile")
+	exitCode, err := client.BuildContainer("test", "test", "/nonexistent/Dockerfile")
 	if err == nil {
 		t.Error("BuildContainer() expected error, got nil")
 	}
@@ -328,7 +328,7 @@ func TestBuildContainer_FileNotFound(t *testing.T) {
 func TestBuildContainer_ContainerfileDoesNotExist(t *testing.T) {
 	client := &Client{Binary: "docker"}
 
-	exitCode, err := client.BuildContainer("test", "/path/that/does/not/exist/Dockerfile")
+	exitCode, err := client.BuildContainer("test", "test", "/path/that/does/not/exist/Dockerfile")
 	if err == nil {
 		t.Error("BuildContainer() expected error for non-existent file, got nil")
 	}

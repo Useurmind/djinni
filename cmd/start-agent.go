@@ -94,7 +94,16 @@ func prepareWorkspace(agentCfg *config.AgentConfig, cwd, agentName, taskName str
 		return nil, "", nil, nil, "", fmt.Errorf("failed to initialize container client: %w", err)
 	}
 
-	image, commands, filesToCopy, workspacePath, err := setupWorkspace(agentCfg, cwd, agentName, taskName)
+	_, err = os.Getwd()
+	if err != nil {
+		return nil, "", nil, nil, "", fmt.Errorf("failed to get current directory: %w", err)
+	}
+	repoName, err := git.GetRepoName(cwd)
+	if err != nil {
+		return nil, "", nil, nil, "", fmt.Errorf("failed to get repo name: %w", err)
+	}
+
+	image, commands, filesToCopy, workspacePath, err := setupWorkspace(agentCfg, cwd, repoName, agentName, taskName)
 	if err != nil {
 		return nil, "", nil, nil, "", err
 	}
@@ -111,15 +120,6 @@ func prepareWorkspace(agentCfg *config.AgentConfig, cwd, agentName, taskName str
 			commands = &docker.ContainerCommands{}
 		}
 		commands.FilesToCopy = filesToCopy
-	}
-
-	_, err = os.Getwd()
-	if err != nil {
-		return nil, "", nil, nil, "", fmt.Errorf("failed to get current directory: %w", err)
-	}
-	repoName, err := git.GetRepoName(cwd)
-	if err != nil {
-		return nil, "", nil, nil, "", fmt.Errorf("failed to get repo name: %w", err)
 	}
 
 	for _, wp := range agentCfg.WritablePaths {
@@ -145,7 +145,7 @@ func prepareWorkspace(agentCfg *config.AgentConfig, cwd, agentName, taskName str
 	return client, image, commands, filesToCopy, workspacePath, nil
 }
 
-func setupWorkspace(agentCfg *config.AgentConfig, cwd, agentName, taskName string) (string, *docker.ContainerCommands, []docker.FilesToCopy, string, error) {
+func setupWorkspace(agentCfg *config.AgentConfig, cwd, repoName, agentName, taskName string) (string, *docker.ContainerCommands, []docker.FilesToCopy, string, error) {
 	var image string
 	var commands *docker.ContainerCommands
 	filesToCopy := []docker.FilesToCopy{}
@@ -153,7 +153,7 @@ func setupWorkspace(agentCfg *config.AgentConfig, cwd, agentName, taskName strin
 
 	image = agentCfg.Image
 	if agentCfg.Containerfile != "" {
-		image = fmt.Sprintf(docker.ImageTagFormat, agentName)
+		image = fmt.Sprintf(docker.AgentImageNameFormat, repoName, agentName)
 		log.Info(fmt.Sprintf("Using local image: %s", image))
 	}
 

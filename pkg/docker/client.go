@@ -11,7 +11,7 @@ import (
 	"github.com/useurmind/djinni/pkg/log"
 )
 
-const ImageTagFormat = "djinni-%s:latest"
+const AgentImageNameFormat = "%s-%s:latest"
 
 type Client struct {
 	Type   string
@@ -95,14 +95,14 @@ func (c *Client) CleanupOverlayMount(repoName, agentName, taskName, writablePath
 	return CleanupOverlay(repoName, agentName, writablePathName, taskName)
 }
 
-func (c *Client) BuildContainer(name string, containerfile string) (int, error) {
+func (c *Client) BuildContainer(repoName, agentName string, containerfile string) (int, error) {
 	if _, err := os.Stat(containerfile); os.IsNotExist(err) {
 		return 1, fmt.Errorf("containerfile '%s' does not exist", containerfile)
 	}
 
-	args := []string{"build", "-f", containerfile, "-t", fmt.Sprintf(ImageTagFormat, name), "."}
+	args := []string{"build", "-f", containerfile, "-t", fmt.Sprintf(AgentImageNameFormat, repoName, agentName), "."}
 
-	log.Info(fmt.Sprintf("Building container: %s", name))
+	log.Info(fmt.Sprintf("Building container: %s", agentName))
 	log.Info(fmt.Sprintf("Building from: %s", containerfile))
 	log.Info(fmt.Sprintf("Running: %s %s", c.Binary, strings.Join(args, " ")))
 
@@ -118,7 +118,7 @@ func (c *Client) BuildContainer(name string, containerfile string) (int, error) 
 		}
 		return 1, fmt.Errorf("build failed: %w", err)
 	}
-	log.Success(fmt.Sprintf("Built image: "+ImageTagFormat, name))
+	log.Success(fmt.Sprintf("Built image: "+AgentImageNameFormat, repoName, agentName))
 	return 0, nil
 }
 

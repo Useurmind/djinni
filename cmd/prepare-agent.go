@@ -34,12 +34,21 @@ var prepareAgentCmd = &cobra.Command{
 		if agentCfg.Containerfile != "" {
 			log.Info(fmt.Sprintf("Building from: %s", agentCfg.Containerfile))
 
+			cwd, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("failed to get current directory: %w", err)
+			}
+			repoName, err := git.GetRepoName(cwd)
+			if err != nil {
+				return fmt.Errorf("failed to get repo name: %w", err)
+			}
+
 			client, err := docker.NewClient()
 			if err != nil {
 				return fmt.Errorf("failed to initialize container client: %w", err)
 			}
 
-			exitCode, err := client.BuildContainer(agentName, agentCfg.Containerfile)
+			exitCode, err := client.BuildContainer(repoName, agentName, agentCfg.Containerfile)
 			if err != nil {
 				return fmt.Errorf("failed to build container: %w", err)
 			}
@@ -67,7 +76,7 @@ var prepareAgentCmd = &cobra.Command{
 				return fmt.Errorf("failed to get repo name: %w", err)
 			}
 
-			image := fmt.Sprintf(docker.ImageTagFormat, agentName)
+			image := fmt.Sprintf(docker.AgentImageNameFormat, repoName, agentName)
 			if agentCfg.Image != "" {
 				image = agentCfg.Image
 			}
