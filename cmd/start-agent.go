@@ -64,12 +64,22 @@ func runStartAgent(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	mountSources := git.GetMountPaths(agentCfg.Mounts)
-	exitCode, err := client.RunContainer(image, agentCfg.HarnessCommand, agentName, agentCfg.Mounts, commands)
+	repoName, err := git.GetRepoName(cwd)
+	if err != nil {
+		return fmt.Errorf("failed to get repo name: %w", err)
+	}
+
+	var exitCode int
+	if len(commands.WritablePaths) > 0 {
+		exitCode, err = client.RunContainerWithUnshare(repoName, agentName, taskName, image, agentCfg.HarnessCommand, agentCfg.Mounts, commands)
+	} else {
+		exitCode, err = client.RunContainer(image, agentCfg.HarnessCommand, agentName, agentCfg.Mounts, commands)
+	}
 	if err != nil {
 		return fmt.Errorf("failed to run container: %w", err)
 	}
 
+	mountSources := git.GetMountPaths(agentCfg.Mounts)
 	if len(mountSources) > 0 {
 		log.Info("Restoring file ownership after container exit...")
 		if err := git.RestoreOwnership(mountSources); err != nil {
@@ -123,14 +133,10 @@ func prepareWorkspace(agentCfg *config.AgentConfig, cwd, agentName, taskName str
 	}
 
 	for _, wp := range agentCfg.WritablePaths {
-		overlayMountPath, err := client.SetupOverlayMount(repoName, agentName, taskName, wp.Name, wp.Destination)
+		_, err := client.SetupOverlayMount(repoName, agentName, taskName, wp.Name, wp.Destination)
 		if err != nil {
 			return nil, "", nil, nil, "", fmt.Errorf("failed to setup overlay mount for %s: %w", wp.Name, err)
 		}
-		agentCfg.Mounts = append(agentCfg.Mounts, config.Mount{
-			Source:      overlayMountPath,
-			Destination: wp.Destination,
-		})
 	}
 
 	if workspacePath != "" {

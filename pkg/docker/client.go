@@ -55,7 +55,6 @@ func (c *Client) PrepareWritablePaths(repoName, agentName string, writablePaths 
 }
 
 func (c *Client) SetupOverlayMount(repoName, agentName, taskName, writablePathName, destination string) (string, error) {
-	lowerDir := GetLowerDir(repoName, agentName, writablePathName)
 	upperDir := GetUpperDir(repoName, agentName, writablePathName, taskName)
 	workDir := GetWorkDir(repoName, agentName, writablePathName, taskName)
 
@@ -72,27 +71,7 @@ func (c *Client) SetupOverlayMount(repoName, agentName, taskName, writablePathNa
 		return "", fmt.Errorf("failed to create temp mount directory %s: %w", tempMount, err)
 	}
 
-	err := exec.Command("mount", "-t", "overlay", "overlay",
-		"-o", fmt.Sprintf("lowerdir=%s,upperdir=%s,workdir=%s", lowerDir, upperDir, workDir),
-		tempMount).Run()
-	if err != nil {
-		return "", fmt.Errorf("failed to mount overlayfs: %w", err)
-	}
-
 	return tempMount, nil
-}
-
-func (c *Client) CleanupOverlayMount(repoName, agentName, taskName, writablePathName string) error {
-	workDir := GetWorkDir(repoName, agentName, writablePathName, taskName)
-
-	tempMount := filepath.Join(workDir, "mnt")
-
-	cmd := exec.Command("umount", tempMount)
-	if err := cmd.Run(); err != nil {
-		log.Error(fmt.Sprintf("Failed to unmount %s: %v", tempMount, err))
-	}
-
-	return CleanupOverlay(repoName, agentName, writablePathName, taskName)
 }
 
 func (c *Client) BuildContainer(repoName, agentName string, containerfile string) (int, error) {
@@ -232,4 +211,8 @@ func (c *Client) generateEntrypoint(harnessCmd []string, commands *ContainerComm
 	}
 
 	return builder.String()
+}
+
+func (c *Client) RunContainerWithUnshare(repoName, agentName, taskName, image string, cmd []string, mounts []config.Mount, commands *ContainerCommands) (int, error) {
+	return RunContainerWithUnshare(c, repoName, agentName, taskName, image, cmd, mounts, commands)
 }
