@@ -48,7 +48,7 @@ func CreateOverlayStructure(repoName, agentName, writablePathName string) error 
 		}
 	}
 
-	log.Success(fmt.Sprintf("Created overlayfs structure for %s", writablePathName))
+	log.Info(fmt.Sprintf("Created overlayfs structure for %s: %s", writablePathName, baseDir))
 	return nil
 }
 
@@ -77,7 +77,7 @@ func CopyImageFolderToLower(client *Client, image, imageSourcePath, lowerDir str
 		return fmt.Errorf("failed to copy %s from container: %w, output: %s", imageSourcePath, err, strings.TrimSpace(string(output)))
 	}
 
-	log.Success(fmt.Sprintf("Copied %s to lower directory", imageSourcePath))
+	log.Info(fmt.Sprintf("Copied %s to lower directory", imageSourcePath))
 	return nil
 }
 

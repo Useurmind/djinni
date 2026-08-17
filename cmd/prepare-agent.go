@@ -31,22 +31,22 @@ var prepareAgentCmd = &cobra.Command{
 			return fmt.Errorf("agent '%s' not found in config", agentName)
 		}
 
+		cwd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("failed to get current directory: %w", err)
+		}
+		repoName, err := git.GetRepoName(cwd)
+		if err != nil {
+			return fmt.Errorf("failed to get repo name: %w", err)
+		}
+
+		client, err := docker.NewClient()
+		if err != nil {
+			return fmt.Errorf("failed to initialize container client: %w", err)
+		}
+
 		if agentCfg.Containerfile != "" {
 			log.Info(fmt.Sprintf("Building from: %s", agentCfg.Containerfile))
-
-			cwd, err := os.Getwd()
-			if err != nil {
-				return fmt.Errorf("failed to get current directory: %w", err)
-			}
-			repoName, err := git.GetRepoName(cwd)
-			if err != nil {
-				return fmt.Errorf("failed to get repo name: %w", err)
-			}
-
-			client, err := docker.NewClient()
-			if err != nil {
-				return fmt.Errorf("failed to initialize container client: %w", err)
-			}
 
 			exitCode, err := client.BuildContainer(repoName, agentName, agentCfg.Containerfile)
 			if err != nil {
@@ -57,24 +57,9 @@ var prepareAgentCmd = &cobra.Command{
 				return nil
 			}
 		}
-
-		log.Info(fmt.Sprintf("Image specified, nothing to prepare: %s", agentCfg.Image))
-
+		
 		if len(agentCfg.WritablePaths) > 0 {
 			log.Info("Setting up writable paths with overlayfs...")
-			client, err := docker.NewClient()
-			if err != nil {
-				return fmt.Errorf("failed to initialize container client: %w", err)
-			}
-
-			cwd, err := os.Getwd()
-			if err != nil {
-				return fmt.Errorf("failed to get current directory: %w", err)
-			}
-			repoName, err := git.GetRepoName(cwd)
-			if err != nil {
-				return fmt.Errorf("failed to get repo name: %w", err)
-			}
 
 			image := fmt.Sprintf(docker.AgentImageNameFormat, repoName, agentName)
 			if agentCfg.Image != "" {
