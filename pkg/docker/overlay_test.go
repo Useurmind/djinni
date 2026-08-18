@@ -67,6 +67,11 @@ func TestCreateOverlayStructure(t *testing.T) {
 }
 
 func TestCleanupOverlay(t *testing.T) {
+	_, err := NewClient()
+	if err != nil {
+		t.Skipf("Skipping test: no container runtime available: %v", err)
+	}
+
 	repoName := "test-repo"
 	agentName := "test-agent"
 	writablePathName := "home"
@@ -75,7 +80,7 @@ func TestCleanupOverlay(t *testing.T) {
 	upperDir := GetUpperDir(repoName, agentName, writablePathName, taskName)
 	workDir := GetWorkDir(repoName, agentName, writablePathName, taskName)
 
-	err := os.MkdirAll(upperDir, 0755)
+	err = os.MkdirAll(upperDir, 0755)
 	require.NoError(t, err)
 	err = os.MkdirAll(workDir, 0755)
 	require.NoError(t, err)

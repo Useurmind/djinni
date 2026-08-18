@@ -26,6 +26,9 @@ type AgentConfig struct {
 	SyncApproach string `yaml:"sync_approach,omitempty"`
 	// AutoDeleteAgentBranch automatically deletes the feature branch after sync
 	AutoDeleteAgentBranch bool `yaml:"autodelete_agent_branch,omitempty"`
+	// DeleteOnExit controls what gets deleted on agent exit
+	// Options: "none" (keep everything), "all" (delete everything)
+	DeleteOnExit string `yaml:"delete_on_exit,omitempty"`
 	// ForceReadOnlyRootOff disables read-only root filesystem (default: false)
 	ForceReadOnlyRootOff bool `yaml:"forceReadOnlyRootOff"`
 	// TmpfsMounts specifies tmpfs mounts for the container (e.g., /tmp, /cache)
@@ -128,6 +131,9 @@ func (c *Config) Validate() error {
 		}
 		if agent.SyncApproach != "" && agent.SyncApproach != "none" && agent.SyncApproach != "gitpatch" && agent.SyncApproach != "automerge" {
 			return fmt.Errorf("agent '%s': sync_approach must be 'none', 'gitpatch', or 'automerge'", name)
+		}
+		if agent.DeleteOnExit != "" && agent.DeleteOnExit != "none" && agent.DeleteOnExit != "all" {
+			return fmt.Errorf("agent '%s': delete_on_exit must be 'none' or 'all'", name)
 		}
 		for _, tmpfs := range agent.TmpfsMounts {
 			if tmpfs.Destination == "" {

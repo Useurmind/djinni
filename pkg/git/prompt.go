@@ -130,6 +130,23 @@ func PromptAutoDeleteBranch() (bool, error) {
 	return autodelete, nil
 }
 
+func PromptDeleteOnExit() (string, error) {
+	var deleteMode string
+	deleteField := huh.NewSelect[string]().
+		Title("Delete agent workspace on exit?").
+		Options(
+			huh.NewOption("Keep workspace", "none"),
+			huh.NewOption("Delete everything", "all"),
+		).
+		Value(&deleteMode)
+
+	if err := deleteField.Run(); err != nil {
+		return "none", fmt.Errorf("failed to prompt for delete on exit: %w", err)
+	}
+
+	return deleteMode, nil
+}
+
 func getGitStatusOutput(repoPath string) (string, error) {
 	cmd := exec.Command("git", "status")
 	cmd.Dir = repoPath

@@ -25,6 +25,18 @@ func execCommand(name string, args []string, workdir string) error {
 	return nil
 }
 
+func getDeleteOnExitMode(configValue string, rmFlag bool) (string, error) {
+	if rmFlag {
+		return "all", nil
+	}
+
+	if configValue != "" {
+		return configValue, nil
+	}
+
+	return git.PromptDeleteOnExit()
+}
+
 var startAgentCmd = &cobra.Command{
 	Use:   "start-agent <agent-name>",
 	Short: "Start an agent by name from the config",
@@ -44,6 +56,11 @@ func runStartAgent(cmd *cobra.Command, args []string) error {
 	taskName, err := cmd.Flags().GetString("task")
 	if err != nil {
 		return fmt.Errorf("failed to get task flag: %w", err)
+	}
+
+	rmFlag, err := cmd.Flags().GetBool("rm")
+	if err != nil {
+		return fmt.Errorf("failed to get rm flag: %w", err)
 	}
 
 	cfg, err := config.LoadConfig(configPath)
@@ -88,6 +105,11 @@ func runStartAgent(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to get repo name: %w", err)
 	}
 
+	deleteOnExit, err := getDeleteOnExitMode(agentCfg.DeleteOnExit, rmFlag)
+	if err != nil {
+		return err
+	}
+
 	overlayMounts := make([]struct {
 		mountPath string
 		repoName  string
@@ -103,6 +125,14 @@ func runStartAgent(cmd *cobra.Command, args []string) error {
 			mp := overlayMounts[i]
 			if err := docker.UnmountOverlayPathAndCleanup(mp.mountPath, mp.repoName, mp.agentName, mp.wpName, mp.taskName); err != nil {
 				log.Error(fmt.Sprintf("Failed to unmount overlay at %s: %v", mp.mountPath, err))
+			}
+		}
+		if workspacePath != "" && deleteOnExit == "all" {
+			log.Info("Deleting workspace...")
+			if err := os.RemoveAll(workspacePath); err != nil {
+				log.Error(fmt.Sprintf("Failed to delete workspace %s: %v", workspacePath, err))
+			} else {
+				log.Info(fmt.Sprintf("Deleted workspace: %s", workspacePath))
 			}
 		}
 	}()
@@ -522,6 +552,7 @@ func init() {
 	startAgentCmd.Flags().StringP("config", "c", "", "Path to config file (default: .djinni.yml in current directory)")
 	startAgentCmd.Flags().StringP("task", "t", "", "Task name for workspace mount (creates feature/<taskname> branch)")
 	startAgentCmd.Flags().String("cmd", "", "Override harness command (comma-separated values, e.g., bash,ls)")
+	startAgentCmd.Flags().Bool("rm", false, "Delete workspace, upperdir, and workdir on exit")
 	if err := startAgentCmd.MarkFlagRequired("task"); err != nil {
 		log.Error(fmt.Sprintf("Failed to mark flag required: %v", err))
 	}

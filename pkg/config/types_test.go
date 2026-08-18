@@ -219,6 +219,45 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "agent with valid delete_on_exit none",
+			config: &Config{
+				Agents: map[string]*AgentConfig{
+					"test": {
+						Image:          "test-image",
+						HarnessCommand: []string{"echo", "test"},
+						DeleteOnExit:   "none",
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "agent with valid delete_on_exit all",
+			config: &Config{
+				Agents: map[string]*AgentConfig{
+					"test": {
+						Image:          "test-image",
+						HarnessCommand: []string{"echo", "test"},
+						DeleteOnExit:   "all",
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "agent with invalid delete_on_exit",
+			config: &Config{
+				Agents: map[string]*AgentConfig{
+					"test": {
+						Image:          "test-image",
+						HarnessCommand: []string{"echo", "test"},
+						DeleteOnExit:   "invalid",
+					},
+				},
+			},
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {
