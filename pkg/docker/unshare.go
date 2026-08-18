@@ -2,95 +2,10 @@ package docker
 
 import (
 	"fmt"
+	"github.com/useurmind/djinni/pkg/log"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"strings"
-
-	"github.com/useurmind/djinni/pkg/config"
-	"github.com/useurmind/djinni/pkg/log"
 )
-
-func RunContainerWithUnshare(c *Client, repoName, agentName, taskName, image string, cmd []string, mounts []config.Mount, commands *ContainerCommands) (int, error) {
-	if commands == nil {
-		commands = &ContainerCommands{}
-	}
-
-	writablePaths := commands.WritablePaths
-
-	if len(writablePaths) > 0 {
-		tempMounts := make([]string, 0, len(writablePaths))
-		for _, wp := range writablePaths {
-			workDir := GetWorkDir(repoName, agentName, wp.Name, taskName)
-			tempMount := filepath.Join(workDir, "mnt")
-			tempMounts = append(tempMounts, tempMount)
-
-			log.Info(fmt.Sprintf("Mounting overlayfs for %s at %s", wp.Name, tempMount))
-			if err := MountOverlay(repoName, agentName, wp.Name, taskName, tempMount); err != nil {
-				return 1, fmt.Errorf("failed to mount overlay for %s: %w", wp.Name, err)
-			}
-		}
-
-		mountArgs := make([]string, 0, len(tempMounts)*2)
-		for i, wp := range writablePaths {
-			mountArgs = append(mountArgs, "-v", fmt.Sprintf("%s:%s", tempMounts[i], wp.Destination))
-		}
-
-		args := append([]string{"run", "--rm", "-it", "--network", "bridge", "--name", agentName}, mountArgs...)
-		args = append(args, "--entrypoint", "/bin/bash")
-		args = append(args, image)
-		args = append(args, "-i", "-c", strings.Join(cmd, " "))
-
-		log.Info(fmt.Sprintf("Running: %s %s", c.Binary, strings.Join(args, " ")))
-
-		runCmd := exec.Command(c.Binary, args...)
-		runCmd.Stdin = os.Stdin
-		runCmd.Stdout = os.Stdout
-		runCmd.Stderr = os.Stderr
-
-		err := runCmd.Run()
-		unmountFailed := false
-		if err != nil {
-			exitErr, ok := err.(*exec.ExitError)
-			if ok {
-				for _, m := range tempMounts {
-					if err := UnmountOverlay(m); err != nil {
-						log.Error(fmt.Sprintf("Failed to unmount overlay at %s: %v", m, err))
-						unmountFailed = true
-					}
-				}
-				if unmountFailed {
-					return exitErr.ExitCode(), fmt.Errorf("unmount failed after container exit")
-				}
-				return exitErr.ExitCode(), nil
-			}
-			for _, m := range tempMounts {
-				if err := UnmountOverlay(m); err != nil {
-					log.Error(fmt.Sprintf("Failed to unmount overlay at %s: %v", m, err))
-					unmountFailed = true
-				}
-			}
-			if unmountFailed {
-				return 1, fmt.Errorf("%s %s: unmount failed, %w", c.Binary, strings.Join(mountArgs, " "), err)
-			}
-			return 1, fmt.Errorf("%s %s: %w", c.Binary, strings.Join(mountArgs, " "), err)
-		}
-
-		for _, m := range tempMounts {
-			if err := UnmountOverlay(m); err != nil {
-				log.Error(fmt.Sprintf("Failed to unmount overlay at %s: %v", m, err))
-				unmountFailed = true
-			}
-		}
-		if unmountFailed {
-			return 0, fmt.Errorf("unmount failed after successful container execution")
-		}
-
-		return 0, nil
-	}
-
-	return c.RunContainer(image, cmd, agentName, mounts, commands)
-}
 
 func MountOverlay(repoName, agentName, writablePathName, taskName, tempMount string) error {
 	lowerDir := GetLowerDir(repoName, agentName, writablePathName)
