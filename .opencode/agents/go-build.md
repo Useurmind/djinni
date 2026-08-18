@@ -1,5 +1,4 @@
 ---
-id: subbuild
 description: Default subagent for development work with full tool access.
 mode: subagent
 permissions:
@@ -60,4 +59,6 @@ You have full access to the codebase and tools to implement features, fix bugs, 
 - Do not edit files outside the workspace without approval.
 - Do not read sensitive environment files (e.g., `.env`, `.env.local`) without approval.
 - Do not exit Plan mode once entered; wait for user instruction.
+- Do not commit or create pull requests
+- Do not try to do online requests that change something. Only do web read or use a subagent to do exploration.
 - Prioritize correctness, security, and maintainability in your changes.   

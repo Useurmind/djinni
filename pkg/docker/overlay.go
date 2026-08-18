@@ -89,13 +89,16 @@ func CopyImageFolderToLower(client *Client, image, imageSourcePath, lowerDir str
 	}
 
 	// Clear existing lower directory to ensure clean copy from image
-	if err := os.RemoveAll(lowerDir); err != nil {
-		return fmt.Errorf("failed to remove existing lower directory: %w", err)
+	// Use podman unshare rm -rf to handle read-only files in namespace context (e.g., Go module cache)
+	if _, err := os.Stat(lowerDir); err == nil {
+		if err := exec.Command("podman", "unshare", "rm", "-rf", lowerDir).Run(); err != nil {
+			return fmt.Errorf("failed to remove existing lower directory: %w", err)
+		}
+		log.Info(fmt.Sprintf("Cleared existing lower directory: %s", lowerDir))
 	}
 	if err := os.MkdirAll(lowerDir, 0755); err != nil {
 		return fmt.Errorf("failed to recreate lower directory: %w", err)
 	}
-	log.Info(fmt.Sprintf("Cleared existing lower directory: %s", lowerDir))
 
 	for _, entry := range entries {
 		src := filepath.Join(sourceCopyPath, entry.Name())
