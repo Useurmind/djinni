@@ -43,7 +43,8 @@ func CopyFilesAsync(containerID string, files []FilesToCopy, client *Client) cha
 				break
 			}
 			if i == 59 {
-				log.Error(fmt.Sprintf("Container not ready: %s", string(output)))
+				errChan <- fmt.Errorf("container not ready after 30 seconds: %s", string(output))
+				return
 			}
 			time.Sleep(500 * time.Millisecond)
 		}
@@ -74,8 +75,7 @@ func copyFileToContainer(containerID, source, destination string, client *Client
 	cmd := exec.Command(client.Binary, "exec", containerID, "mkdir", "-p", destDir)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Error(fmt.Sprintf("Failed to create directory: %s", string(output)))
-		return err
+		return fmt.Errorf("failed to create directory %s: %w, output: %s", destDir, err, string(output))
 	}
 
 	hostSourcePath, err := getHostPathForSource(source)
@@ -86,8 +86,7 @@ func copyFileToContainer(containerID, source, destination string, client *Client
 	cmd = exec.Command(client.Binary, "cp", hostSourcePath, containerID+":"+destination)
 	output, err = cmd.CombinedOutput()
 	if err != nil {
-		log.Error(fmt.Sprintf("Failed to copy file: %s", string(output)))
-		return fmt.Errorf("failed to execute %s cp %s %s:%s: %w", client.Binary, hostSourcePath, containerID, destination, err)
+		return fmt.Errorf("failed to copy %s to %s in container %s: %w, output: %s", hostSourcePath, destination, containerID, err, string(output))
 	}
 
 	return nil

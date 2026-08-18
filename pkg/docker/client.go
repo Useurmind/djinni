@@ -20,13 +20,16 @@ type Client struct {
 
 func NewClient() (*Client, error) {
 	for _, binary := range []string{"podman", "docker"} {
-		if _, err := exec.LookPath(binary); err == nil {
+		_, err := exec.LookPath(binary)
+		if err == nil {
 			log.Info(fmt.Sprintf("Detected container runtime: %s", binary))
 			return &Client{
 				Type:   binary,
 				Binary: binary,
 			}, nil
 		}
+		// exec.LookPath returns an error when the binary is not found
+		// This is expected and we should continue checking the next binary
 	}
 	return nil, fmt.Errorf("no container runtime found (podman or docker)")
 }

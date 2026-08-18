@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+
+	"github.com/useurmind/djinni/pkg/log"
 )
 
 func GetChangedFilesWithDiffs(repoPath string) (string, error) {
@@ -36,7 +38,11 @@ func parsePorcelainOutputWithDiffs(repoPath, output string) string {
 
 		statusStr := ParseStatus(status)
 
-		diff, _ := getFileDiff(repoPath, filePath)
+		diff, err := getFileDiff(repoPath, filePath)
+		if err != nil {
+			log.Error(fmt.Sprintf("Failed to get diff for %s: %v", filePath, err))
+			diff = ""
+		}
 
 		result := fmt.Sprintf("- %s %s", filePath, statusStr)
 		if diff != "" {

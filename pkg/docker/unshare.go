@@ -49,20 +49,29 @@ func RunContainerWithUnshare(c *Client, repoName, agentName, taskName, image str
 		runCmd.Stderr = os.Stderr
 
 		err := runCmd.Run()
+		unmountFailed := false
 		if err != nil {
 			exitErr, ok := err.(*exec.ExitError)
 			if ok {
 				for _, m := range tempMounts {
 					if err := UnmountOverlay(m); err != nil {
 						log.Error(fmt.Sprintf("Failed to unmount overlay at %s: %v", m, err))
+						unmountFailed = true
 					}
+				}
+				if unmountFailed {
+					return exitErr.ExitCode(), fmt.Errorf("unmount failed after container exit")
 				}
 				return exitErr.ExitCode(), nil
 			}
 			for _, m := range tempMounts {
 				if err := UnmountOverlay(m); err != nil {
 					log.Error(fmt.Sprintf("Failed to unmount overlay at %s: %v", m, err))
+					unmountFailed = true
 				}
+			}
+			if unmountFailed {
+				return 1, fmt.Errorf("%s %s: unmount failed, %w", c.Binary, strings.Join(mountArgs, " "), err)
 			}
 			return 1, fmt.Errorf("%s %s: %w", c.Binary, strings.Join(mountArgs, " "), err)
 		}
@@ -70,7 +79,11 @@ func RunContainerWithUnshare(c *Client, repoName, agentName, taskName, image str
 		for _, m := range tempMounts {
 			if err := UnmountOverlay(m); err != nil {
 				log.Error(fmt.Sprintf("Failed to unmount overlay at %s: %v", m, err))
+				unmountFailed = true
 			}
+		}
+		if unmountFailed {
+			return 0, fmt.Errorf("unmount failed after successful container execution")
 		}
 
 		return 0, nil

@@ -65,7 +65,7 @@ func runStartAgent(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("agent '%s' not found in config", agentName)
 	}
 
-	client, image, commands, _, workspacePath, err := prepareWorkspace(agentCfg, cwd, agentName, taskName)
+	client, image, commands, workspacePath, err := prepareWorkspace(agentCfg, cwd, agentName, taskName)
 	if err != nil {
 		return err
 	}
@@ -148,57 +148,45 @@ func runStartAgent(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func prepareWorkspace(agentCfg *config.AgentConfig, cwd, agentName, taskName string) (*docker.Client, string, *docker.ContainerCommands, []docker.FilesToCopy, string, error) {
+func prepareWorkspace(agentCfg *config.AgentConfig, cwd, agentName, taskName string) (*docker.Client, string, *docker.ContainerCommands, string, error) {
 	log.Info("Initializing container client...")
 	client, err := docker.NewClient()
 	if err != nil {
-		return nil, "", nil, nil, "", fmt.Errorf("failed to initialize container client: %w", err)
+		return nil, "", nil, "", fmt.Errorf("failed to initialize container client: %w", err)
 	}
 
-	_, err = os.Getwd()
-	if err != nil {
-		return nil, "", nil, nil, "", fmt.Errorf("failed to get current directory: %w", err)
-	}
 	repoName, err := git.GetRepoName(cwd)
 	if err != nil {
-		return nil, "", nil, nil, "", fmt.Errorf("failed to get repo name: %w", err)
+		return nil, "", nil, "", fmt.Errorf("failed to get repo name: %w", err)
 	}
 
-	image, commands, filesToCopy, workspacePath, err := setupWorkspace(agentCfg, cwd, repoName, agentName, taskName)
+	image, commands, workspacePath, err := setupWorkspace(agentCfg, cwd, repoName, agentName, taskName)
 	if err != nil {
-		return nil, "", nil, nil, "", err
+		return nil, "", nil, "", err
 	}
 
 	for _, fc := range agentCfg.FilesToCopy {
-		filesToCopy = append(filesToCopy, docker.FilesToCopy{
+		commands.FilesToCopy = append(commands.FilesToCopy, docker.FilesToCopy{
 			Source:      fc.Source,
 			Destination: fc.Destination,
 		})
 	}
 
-	if len(filesToCopy) > 0 {
-		if commands == nil {
-			commands = &docker.ContainerCommands{}
-		}
-		commands.FilesToCopy = filesToCopy
-	}
-
 	if workspacePath != "" {
 		log.Info(fmt.Sprintf("Using local workspace: %s", workspacePath))
 		if err := git.CheckoutNewBranch(workspacePath, taskName); err != nil {
-			return nil, "", nil, nil, "", fmt.Errorf("failed to checkout branch: %w", err)
+			return nil, "", nil, "", fmt.Errorf("failed to checkout branch: %w", err)
 		}
 	}
 
 	log.Info(fmt.Sprintf("Using image: %s", image))
 
-	return client, image, commands, filesToCopy, workspacePath, nil
+	return client, image, commands, workspacePath, nil
 }
 
-func setupWorkspace(agentCfg *config.AgentConfig, cwd, repoName, agentName, taskName string) (string, *docker.ContainerCommands, []docker.FilesToCopy, string, error) {
+func setupWorkspace(agentCfg *config.AgentConfig, cwd, repoName, agentName, taskName string) (string, *docker.ContainerCommands, string, error) {
 	var image string
 	var commands *docker.ContainerCommands
-	filesToCopy := []docker.FilesToCopy{}
 	var workspacePath string
 
 	image = agentCfg.Image
@@ -215,7 +203,7 @@ func setupWorkspace(agentCfg *config.AgentConfig, cwd, repoName, agentName, task
 		var err error
 		workspacePath, err = git.CloneToTemp(cwd, baseDir, agentName, taskName)
 		if err != nil {
-			return "", nil, nil, "", fmt.Errorf("failed to clone workspace: %w", err)
+			return "", nil, "", fmt.Errorf("failed to clone workspace: %w", err)
 		}
 
 		workspaceMountPath := filepath.Join("/workspace", fmt.Sprintf("%s-%s", filepath.Base(cwd), taskName))
@@ -226,25 +214,25 @@ func setupWorkspace(agentCfg *config.AgentConfig, cwd, repoName, agentName, task
 
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
-			return "", nil, nil, "", fmt.Errorf("failed to get user home directory: %w", err)
+			return "", nil, "", fmt.Errorf("failed to get user home directory: %w", err)
 		}
 
 		gitconfigPath := filepath.Join(homeDir, ".gitconfig")
 		gitconfigStat, err := os.Stat(gitconfigPath)
 		if err != nil {
-			return "", nil, nil, "", fmt.Errorf("failed to stat gitconfig file at %s: %w", gitconfigPath, err)
+			return "", nil, "", fmt.Errorf("failed to stat gitconfig file at %s: %w", gitconfigPath, err)
 		}
 		if gitconfigStat.IsDir() {
-			return "", nil, nil, "", fmt.Errorf("gitconfig path %s is a directory, expected a file", gitconfigPath)
+			return "", nil, "", fmt.Errorf("gitconfig path %s is a directory, expected a file", gitconfigPath)
 		}
-
-		gitconfigCopy := docker.FilesToCopy{
-			Source:      gitconfigPath,
-			Destination: "/home/agent/.gitconfig",
-		}
-		filesToCopy = append(filesToCopy, gitconfigCopy)
 
 		commands = &docker.ContainerCommands{
+			FilesToCopy: []docker.FilesToCopy{
+				{
+					Source:      gitconfigPath,
+					Destination: "/home/agent/.gitconfig",
+				},
+			},
 			PreCommands: []string{
 				fmt.Sprintf("cd /workspace/%s-%s", filepath.Base(cwd), taskName),
 				fmt.Sprintf("git config --global --add safe.directory /workspace/%s-%s", filepath.Base(cwd), taskName),
@@ -272,7 +260,7 @@ func setupWorkspace(agentCfg *config.AgentConfig, cwd, repoName, agentName, task
 		})
 	}
 
-	return image, commands, filesToCopy, workspacePath, nil
+	return image, commands, workspacePath, nil
 }
 
 func handlePostExecution(agentCfg *config.AgentConfig, cfg *config.Config, cwd, taskName, workspacePath string) error {

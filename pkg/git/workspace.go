@@ -18,9 +18,17 @@ func CloneToTemp(sourceDir, baseDir, agentName, taskName string) (string, error)
 
 	destDir := filepath.Join(baseDir, repoName, agentName, taskName)
 
-	if _, err := os.Stat(destDir); err == nil {
+	stat, err := os.Stat(destDir)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return "", fmt.Errorf("failed to stat destination directory %s: %w", destDir, err)
+		}
+		// Directory doesn't exist, we'll create it
+	} else if stat.IsDir() {
 		log.Info(fmt.Sprintf("Using existing workspace: %s", destDir))
 		return destDir, nil
+	} else {
+		return "", fmt.Errorf("destination path %s exists but is not a directory", destDir)
 	}
 
 	log.Info(fmt.Sprintf("Cloning repository from %s to %s", sourceDir, destDir))

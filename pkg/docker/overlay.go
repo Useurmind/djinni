@@ -63,7 +63,9 @@ func CopyImageFolderToLower(client *Client, image, imageSourcePath, lowerDir str
 	tempContainerID := strings.TrimSpace(string(output))
 
 	defer func() {
-		_ = exec.Command(client.Binary, "rm", "-f", tempContainerID).Run()
+		if err := exec.Command(client.Binary, "rm", "-f", tempContainerID).Run(); err != nil {
+			log.Error(fmt.Sprintf("Failed to remove temp container %s: %v", tempContainerID, err))
+		}
 	}()
 
 	lowerParentDir := filepath.Dir(lowerDir)

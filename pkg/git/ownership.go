@@ -11,8 +11,17 @@ import (
 
 func RestoreOwnership(paths []string) error {
 	for _, path := range paths {
-		if _, err := os.Stat(path); os.IsNotExist(err) {
-			log.Error(fmt.Sprintf("Path does not exist: %s", path))
+		stat, err := os.Stat(path)
+		if err != nil {
+			if os.IsNotExist(err) {
+				log.Error(fmt.Sprintf("Path does not exist: %s", path))
+				continue
+			}
+			log.Error(fmt.Sprintf("Failed to stat path %s: %v", path, err))
+			continue
+		}
+		if stat.IsDir() {
+			log.Error(fmt.Sprintf("Path is a directory, expected a file: %s", path))
 			continue
 		}
 

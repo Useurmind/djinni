@@ -39,6 +39,7 @@ func PromptCommitChanges(repoPath string, configPath string) (CommitMode, string
 	statusOutput, err := getGitStatusOutput(repoPath)
 	if err != nil {
 		log.Error(fmt.Sprintf("Failed to get git status: %v", err))
+		fmt.Println("Unable to show git status.")
 	} else {
 		fmt.Println(statusOutput)
 	}
