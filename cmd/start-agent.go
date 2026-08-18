@@ -69,15 +69,65 @@ func runStartAgent(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to get repo name: %w", err)
 	}
 
-	var exitCode int
-	if len(commands.WritablePaths) > 0 {
-		exitCode, err = client.RunContainerWithUnshare(repoName, agentName, taskName, image, agentCfg.HarnessCommand, agentCfg.Mounts, commands)
-	} else {
-		exitCode, err = client.RunContainer(image, agentCfg.HarnessCommand, agentName, agentCfg.Mounts, commands)
+	overlayMounts := make([]struct {
+		mountPath string
+		repoName  string
+		agentName string
+		wpName    string
+		taskName  string
+	}, 0, len(commands.WritablePaths))
+	for _, wp := range commands.WritablePaths {
+		tempMountPath, err := client.SetupOverlayMount(repoName, agentName, taskName, wp.Name, wp.Destination)
+		if err != nil {
+			for _, mp := range overlayMounts {
+				if err := docker.UnmountOverlayPathAndCleanup(mp.mountPath, mp.repoName, mp.agentName, mp.wpName, mp.taskName); err != nil {
+					log.Error(fmt.Sprintf("Failed to unmount overlay for %s: %v", wp.Name, err))
+				}
+			}
+			return fmt.Errorf("failed to setup overlay mount for %s: %w", wp.Name, err)
+		}
+
+		if err := docker.MountOverlayFsWithMountPoint(repoName, agentName, wp.Name, taskName, tempMountPath); err != nil {
+			for _, mp := range overlayMounts {
+				if err := docker.UnmountOverlayPathAndCleanup(mp.mountPath, mp.repoName, mp.agentName, mp.wpName, mp.taskName); err != nil {
+					log.Error(fmt.Sprintf("Failed to unmount overlay for %s: %v", wp.Name, err))
+				}
+			}
+			return fmt.Errorf("failed to mount overlay for %s: %w", wp.Name, err)
+		}
+
+		overlayMounts = append(overlayMounts, struct {
+			mountPath string
+			repoName  string
+			agentName string
+			wpName    string
+			taskName  string
+		}{
+			mountPath: tempMountPath,
+			repoName:  repoName,
+			agentName: agentName,
+			wpName:    wp.Name,
+			taskName:  taskName,
+		})
+		agentCfg.Mounts = append(agentCfg.Mounts, config.Mount{
+			Source:      tempMountPath,
+			Destination: wp.Destination,
+			ReadOnly:    false,
+		})
 	}
+
+	exitCode, err := client.RunContainer(image, agentCfg.HarnessCommand, agentName, agentCfg.Mounts, commands)
 	if err != nil {
 		return fmt.Errorf("failed to run container: %w", err)
 	}
+
+	defer func() {
+		for _, mp := range overlayMounts {
+			if err := docker.UnmountOverlayPathAndCleanup(mp.mountPath, mp.repoName, mp.agentName, mp.wpName, mp.taskName); err != nil {
+				log.Error(fmt.Sprintf("Failed to unmount overlay at %s: %v", mp.mountPath, err))
+			}
+		}
+	}()
 
 	mountSources := git.GetMountPaths(agentCfg.Mounts)
 	if len(mountSources) > 0 {
@@ -130,13 +180,6 @@ func prepareWorkspace(agentCfg *config.AgentConfig, cwd, agentName, taskName str
 			commands = &docker.ContainerCommands{}
 		}
 		commands.FilesToCopy = filesToCopy
-	}
-
-	for _, wp := range agentCfg.WritablePaths {
-		_, err := client.SetupOverlayMount(repoName, agentName, taskName, wp.Name, wp.Destination)
-		if err != nil {
-			return nil, "", nil, nil, "", fmt.Errorf("failed to setup overlay mount for %s: %w", wp.Name, err)
-		}
 	}
 
 	if workspacePath != "" {

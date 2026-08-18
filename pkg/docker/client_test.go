@@ -336,3 +336,31 @@ func TestBuildContainer_ContainerfileDoesNotExist(t *testing.T) {
 		t.Errorf("BuildContainer() exitCode = %d, want 1", exitCode)
 	}
 }
+
+func TestRunContainer_WithOverlayMounts(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	client := &Client{Binary: "docker"}
+
+	dockerPath := filepath.Join(tmpDir, "docker")
+	if err := os.WriteFile(dockerPath, []byte("#!/bin/sh\nexit 0"), 0755); err != nil {
+		t.Fatalf("Failed to create docker stub: %v", err)
+	}
+
+	oldPath := os.Getenv("PATH")
+	defer os.Setenv("PATH", oldPath)
+	os.Setenv("PATH", tmpDir+string(os.PathListSeparator)+oldPath)
+
+	mounts := []config.Mount{
+		{
+			Source:      "/tmp/djinni/test-repo/test-agent/writablePaths/home/mnt",
+			Destination: "/home/agent",
+			ReadOnly:    false,
+		},
+	}
+
+	_, err := client.RunContainer("test-image", []string{"echo", "test"}, "test-container", mounts, nil)
+	if err != nil {
+		t.Errorf("RunContainer() error = %v", err)
+	}
+}

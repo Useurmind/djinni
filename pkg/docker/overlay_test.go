@@ -111,7 +111,7 @@ func TestCopyImageFolderToLower(t *testing.T) {
 	}
 
 	assert.NoDirExists(t, filepath.Join(lowerDir, ".tmp_copy"))
-	assert.DirExists(t, filepath.Join(lowerDir, "passwd"))
+	assert.FileExists(t, filepath.Join(lowerDir, "passwd"))
 
 	_ = os.RemoveAll(lowerDir)
 }

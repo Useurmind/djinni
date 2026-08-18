@@ -212,7 +212,3 @@ func (c *Client) generateEntrypoint(harnessCmd []string, commands *ContainerComm
 
 	return builder.String()
 }
-
-func (c *Client) RunContainerWithUnshare(repoName, agentName, taskName, image string, cmd []string, mounts []config.Mount, commands *ContainerCommands) (int, error) {
-	return RunContainerWithUnshare(c, repoName, agentName, taskName, image, cmd, mounts, commands)
-}

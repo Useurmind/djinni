@@ -120,3 +120,26 @@ func UnmountOverlay(mountPath string) error {
 	log.Info(fmt.Sprintf("Unmounted overlayfs at %s", mountPath))
 	return nil
 }
+
+func MountOverlayFsWithMountPoint(repoName, agentName, writablePathName, taskName, mountPoint string) error {
+	upperDir := GetUpperDir(repoName, agentName, writablePathName, taskName)
+	workDir := GetWorkDir(repoName, agentName, writablePathName, taskName)
+
+	if err := os.MkdirAll(upperDir, 0755); err != nil {
+		return fmt.Errorf("failed to create upper directory %s: %w", upperDir, err)
+	}
+
+	if err := os.MkdirAll(workDir, 0755); err != nil {
+		return fmt.Errorf("failed to create work directory %s: %w", workDir, err)
+	}
+
+	return MountOverlay(repoName, agentName, writablePathName, taskName, mountPoint)
+}
+
+func UnmountOverlayPathAndCleanup(mountPoint, repoName, agentName, writablePathName, taskName string) error {
+	if err := UnmountOverlay(mountPoint); err != nil {
+		return err
+	}
+
+	return CleanupOverlay(repoName, agentName, writablePathName, taskName)
+}

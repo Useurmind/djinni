@@ -39,8 +39,9 @@ func GetWorkDir(repoName, agentName, writablePathName, taskName string) string {
 
 func CreateOverlayStructure(repoName, agentName, writablePathName string) error {
 	baseDir := GetWritablePathDir(repoName, agentName, writablePathName)
+	lowerDir := GetLowerDir(repoName, agentName, writablePathName)
 
-	paths := []string{baseDir}
+	paths := []string{baseDir, lowerDir}
 	for _, path := range paths {
 		if err := os.MkdirAll(path, 0755); err != nil {
 			return fmt.Errorf("failed to create directory %s: %w", path, err)
@@ -79,9 +80,18 @@ func CopyImageFolderToLower(client *Client, image, imageSourcePath, lowerDir str
 		return fmt.Errorf("failed to copy %s from container: %w, output: %s", imageSourcePath, err, strings.TrimSpace(string(output)))
 	}
 
-	err = os.Rename(filepath.Join(tempCopyDir, sourceBasename), lowerDir)
+	sourceCopyPath := filepath.Join(tempCopyDir, sourceBasename)
+	entries, err := os.ReadDir(sourceCopyPath)
 	if err != nil {
-		return fmt.Errorf("failed to move copied contents to lower directory: %w", err)
+		return fmt.Errorf("failed to read temp copy directory: %w", err)
+	}
+
+	for _, entry := range entries {
+		src := filepath.Join(sourceCopyPath, entry.Name())
+		dst := filepath.Join(lowerDir, entry.Name())
+		if err := os.Rename(src, dst); err != nil {
+			return fmt.Errorf("failed to move %s to lower directory: %w", entry.Name(), err)
+		}
 	}
 
 	log.Info(fmt.Sprintf("Copied %s to lower directory", imageSourcePath))

@@ -5,7 +5,7 @@ agents:
       - opencode
     containerfile: ./Containerfile
     # sync_approach: git_patch
-    forceReadOnlyRootOff: true
+    forceReadOnlyRootOff: false
     mounts:
       - source: /home/jgruen/.config/opencode
         destination: /home/agent/.config/opencode
