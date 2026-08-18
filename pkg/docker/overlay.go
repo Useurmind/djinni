@@ -88,6 +88,15 @@ func CopyImageFolderToLower(client *Client, image, imageSourcePath, lowerDir str
 		return fmt.Errorf("failed to read temp copy directory: %w", err)
 	}
 
+	// Clear existing lower directory to ensure clean copy from image
+	if err := os.RemoveAll(lowerDir); err != nil {
+		return fmt.Errorf("failed to remove existing lower directory: %w", err)
+	}
+	if err := os.MkdirAll(lowerDir, 0755); err != nil {
+		return fmt.Errorf("failed to recreate lower directory: %w", err)
+	}
+	log.Info(fmt.Sprintf("Cleared existing lower directory: %s", lowerDir))
+
 	for _, entry := range entries {
 		src := filepath.Join(sourceCopyPath, entry.Name())
 		dst := filepath.Join(lowerDir, entry.Name())
