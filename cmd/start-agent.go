@@ -36,9 +36,15 @@ var startAgentCmd = &cobra.Command{
 }
 
 func runStartAgent(cmd *cobra.Command, args []string) error {
-	configPath, _ := cmd.Flags().GetString("config")
+	configPath, err := cmd.Flags().GetString("config")
+	if err != nil {
+		return fmt.Errorf("failed to get config flag: %w", err)
+	}
 	agentName := args[0]
-	taskName, _ := cmd.Flags().GetString("task")
+	taskName, err := cmd.Flags().GetString("task")
+	if err != nil {
+		return fmt.Errorf("failed to get task flag: %w", err)
+	}
 
 	cfg, err := config.LoadConfig(configPath)
 	if err != nil {
@@ -224,8 +230,12 @@ func setupWorkspace(agentCfg *config.AgentConfig, cwd, repoName, agentName, task
 		}
 
 		gitconfigPath := filepath.Join(homeDir, ".gitconfig")
-		if _, err := os.Stat(gitconfigPath); os.IsNotExist(err) {
-			return "", nil, nil, "", fmt.Errorf("gitconfig file not found at %s", gitconfigPath)
+		gitconfigStat, err := os.Stat(gitconfigPath)
+		if err != nil {
+			return "", nil, nil, "", fmt.Errorf("failed to stat gitconfig file at %s: %w", gitconfigPath, err)
+		}
+		if gitconfigStat.IsDir() {
+			return "", nil, nil, "", fmt.Errorf("gitconfig path %s is a directory, expected a file", gitconfigPath)
 		}
 
 		gitconfigCopy := docker.FilesToCopy{
@@ -271,7 +281,7 @@ func handlePostExecution(agentCfg *config.AgentConfig, cfg *config.Config, cwd, 
 	clean, err := git.IsRepositoryClean(workspacePath)
 	if err != nil {
 		log.Error(fmt.Sprintf("Failed to check repository status: %v", err))
-		return nil
+		return fmt.Errorf("failed to check repository status: %w", err)
 	}
 
 	if clean {
@@ -282,7 +292,7 @@ func handlePostExecution(agentCfg *config.AgentConfig, cfg *config.Config, cwd, 
 	changedFiles, err := git.GetChangedFiles(workspacePath)
 	if err != nil {
 		log.Error(fmt.Sprintf("Failed to get changed files: %v", err))
-		return nil
+		return fmt.Errorf("failed to get changed files: %w", err)
 	}
 
 	log.Info(fmt.Sprintf("Detected %d changed files", len(changedFiles)))
@@ -292,7 +302,7 @@ func handlePostExecution(agentCfg *config.AgentConfig, cfg *config.Config, cwd, 
 		syncApproach, err = git.PromptSyncApproach()
 		if err != nil {
 			log.Error(fmt.Sprintf("Failed to prompt for sync approach: %v", err))
-			return nil
+			return fmt.Errorf("failed to prompt for sync approach: %w", err)
 		}
 	}
 
@@ -301,7 +311,7 @@ func handlePostExecution(agentCfg *config.AgentConfig, cfg *config.Config, cwd, 
 		autodelete, err = git.PromptAutoDeleteBranch()
 		if err != nil {
 			log.Error(fmt.Sprintf("Failed to prompt for autodelete: %v", err))
-			return nil
+			return fmt.Errorf("failed to prompt for autodelete: %w", err)
 		}
 	}
 
@@ -309,7 +319,7 @@ func handlePostExecution(agentCfg *config.AgentConfig, cfg *config.Config, cwd, 
 	err = commitAndPushFromAgent(agentCfg, branchName, workspacePath, cwd)
 	if err != nil {
 		log.Error(fmt.Sprintf("Failed to commit and push changes: %v", err))
-		return nil
+		return fmt.Errorf("failed to commit and push changes: %w", err)
 	}
 
 	switch syncApproach {
@@ -321,7 +331,7 @@ func handlePostExecution(agentCfg *config.AgentConfig, cfg *config.Config, cwd, 
 		log.Info("No sync approach selected, leaving changes on feature branch")
 	default:
 		log.Error(fmt.Sprintf("Unknown sync approach: %s", syncApproach))
-		return nil
+		return fmt.Errorf("unknown sync approach: %s", syncApproach)
 	}
 
 	return nil
@@ -338,8 +348,12 @@ func commitAndPushFromAgent(agentCfg *config.AgentConfig, branchName, workspaceP
 	if agentCfg.DefaultModel != "" {
 		defaultModel = agentCfg.DefaultModel
 	} else {
-		cfg, _ := config.LoadConfig("")
-		defaultModel = cfg.DefaultModel
+		cfg, err := config.LoadConfig("")
+		if err != nil {
+			log.Info("Failed to load default config, using empty model")
+		} else {
+			defaultModel = cfg.DefaultModel
+		}
 	}
 
 	commitMsg, err := generateCommitMessage(workspacePath, defaultModel)
@@ -373,18 +387,23 @@ func syncWithPatch(agentCfg *config.AgentConfig, branchName, workspacePath, cwd 
 		return err
 	}
 
-	patches, _ := filepath.Glob(filepath.Join(patchDir, "*.patch"))
+	patches, err := filepath.Glob(filepath.Join(patchDir, "*.patch"))
+	if err != nil {
+		log.Error(fmt.Sprintf("Failed to glob patch directory: %v", err))
+		return fmt.Errorf("failed to glob patch directory: %w", err)
+	}
 	if len(patches) > 0 {
 		log.Info("Applying patch to user workspace (files only)...")
 		if err := git.ApplyPatchNoIndex(cwd, patches[0]); err != nil {
 			log.Error(fmt.Sprintf("Failed to apply patch: %v", err))
-			return err
+			return fmt.Errorf("failed to apply patch: %w", err)
 		}
 	}
 
 	if autodelete {
 		if err := git.DeleteBranch(cwd, branchName); err != nil {
 			log.Error(fmt.Sprintf("Failed to delete branch: %v", err))
+			return fmt.Errorf("failed to delete branch: %w", err)
 		}
 	}
 
@@ -402,6 +421,7 @@ func syncWithBranch(agentCfg *config.AgentConfig, branchName, workspacePath, cwd
 	if autodelete {
 		if err := git.DeleteBranch(cwd, branchName); err != nil {
 			log.Error(fmt.Sprintf("Failed to delete branch: %v", err))
+			return fmt.Errorf("failed to delete branch: %w", err)
 		}
 	}
 
