@@ -133,7 +133,7 @@ func PromptAutoDeleteBranch() (bool, error) {
 func PromptDeleteOnExit() (string, error) {
 	var deleteMode string
 	deleteField := huh.NewSelect[string]().
-		Title("Delete agent workspace on exit?").
+		Title("Delete agent workspace and writable paths content?").
 		Options(
 			huh.NewOption("Keep workspace", "none"),
 			huh.NewOption("Delete everything", "all"),

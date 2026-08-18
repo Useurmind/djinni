@@ -63,11 +63,3 @@ func MountOverlayFsWithMountPoint(repoName, agentName, writablePathName, taskNam
 
 	return MountOverlay(repoName, agentName, writablePathName, taskName, mountPoint)
 }
-
-func UnmountOverlayPathAndCleanup(mountPoint, repoName, agentName, writablePathName, taskName string) error {
-	if err := UnmountOverlay(mountPoint); err != nil {
-		return err
-	}
-
-	return CleanupOverlay(repoName, agentName, writablePathName, taskName)
-}

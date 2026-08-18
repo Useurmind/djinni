@@ -105,11 +105,6 @@ func runStartAgent(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to get repo name: %w", err)
 	}
 
-	deleteOnExit, err := getDeleteOnExitMode(agentCfg.DeleteOnExit, rmFlag)
-	if err != nil {
-		return err
-	}
-
 	overlayMounts := make([]struct {
 		mountPath string
 		repoName  string
@@ -119,12 +114,20 @@ func runStartAgent(cmd *cobra.Command, args []string) error {
 	}, 0, len(commands.WritablePaths))
 	successCount := 0
 
+	deleteOnExit := "none"
 	// Defer cleanup to run when function exits, regardless of how it exits
 	defer func() {
 		for i := 0; i < successCount; i++ {
 			mp := overlayMounts[i]
-			if err := docker.UnmountOverlayPathAndCleanup(mp.mountPath, mp.repoName, mp.agentName, mp.wpName, mp.taskName); err != nil {
+			if err := docker.UnmountOverlay(mp.mountPath); err != nil {
 				log.Error(fmt.Sprintf("Failed to unmount overlay at %s: %v", mp.mountPath, err))
+				continue
+			}
+
+			if deleteOnExit == "all" {
+				if err = docker.CleanupOverlay(repoName, agentName, mp.wpName, taskName); err != nil {
+					log.Error(fmt.Sprintf("Failed to unmount overlay at %s: %v", mp.mountPath, err))
+				}
 			}
 		}
 		if workspacePath != "" && deleteOnExit == "all" {
@@ -171,6 +174,11 @@ func runStartAgent(cmd *cobra.Command, args []string) error {
 	_, err = client.RunContainer(image, agentCfg.HarnessCommand, agentName, agentCfg.Mounts, commands)
 	if err != nil {
 		return fmt.Errorf("failed to run container: %w", err)
+	}
+
+	deleteOnExit, err = getDeleteOnExitMode(agentCfg.DeleteOnExit, rmFlag)
+	if err != nil {
+		return err
 	}
 
 	mountSources := git.GetMountPaths(agentCfg.Mounts)
