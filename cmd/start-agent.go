@@ -51,6 +51,24 @@ func runStartAgent(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
+	agentCfg, ok := cfg.Agents[agentName]
+	if !ok {
+		return fmt.Errorf("agent '%s' not found in config", agentName)
+	}
+
+	// Override harness command if --cmd flag is provided
+	cmdFlag, err := cmd.Flags().GetString("cmd")
+	if err != nil {
+		return fmt.Errorf("failed to get cmd flag: %w", err)
+	}
+	if cmdFlag != "" {
+		commands := strings.Split(cmdFlag, ",")
+		for i, arg := range commands {
+			commands[i] = strings.TrimSpace(arg)
+		}
+		agentCfg.HarnessCommand = commands
+	}
+
 	cwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("failed to get current directory: %w", err)
@@ -58,11 +76,6 @@ func runStartAgent(cmd *cobra.Command, args []string) error {
 
 	if err := commitUncommittedChanges(cwd, configPath); err != nil {
 		return err
-	}
-
-	agentCfg, ok := cfg.Agents[agentName]
-	if !ok {
-		return fmt.Errorf("agent '%s' not found in config", agentName)
 	}
 
 	client, image, commands, workspacePath, err := prepareWorkspace(agentCfg, cwd, agentName, taskName)
@@ -515,6 +528,7 @@ func init() {
 	rootCmd.AddCommand(startAgentCmd)
 	startAgentCmd.Flags().StringP("config", "c", "", "Path to config file (default: .djinni.yml in current directory)")
 	startAgentCmd.Flags().StringP("task", "t", "", "Task name for workspace mount (creates feature/<taskname> branch)")
+	startAgentCmd.Flags().String("cmd", "", "Override harness command (comma-separated values, e.g., bash,ls)")
 	if err := startAgentCmd.MarkFlagRequired("task"); err != nil {
 		log.Error(fmt.Sprintf("Failed to mark flag required: %v", err))
 	}
