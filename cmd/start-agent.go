@@ -138,7 +138,7 @@ func runStartAgent(cmd *cobra.Command, args []string) error {
 		})
 	}
 
-	exitCode, err := client.RunContainer(image, agentCfg.HarnessCommand, agentName, agentCfg.Mounts, commands)
+	_, err = client.RunContainer(image, agentCfg.HarnessCommand, agentName, agentCfg.Mounts, commands)
 	if err != nil {
 		return fmt.Errorf("failed to run container: %w", err)
 	}
@@ -147,17 +147,16 @@ func runStartAgent(cmd *cobra.Command, args []string) error {
 	if len(mountSources) > 0 {
 		log.Info("Restoring file ownership after container exit...")
 		if err := git.RestoreOwnership(mountSources); err != nil {
-			log.Error(fmt.Sprintf("Failed to restore ownership: %v", err))
+			return fmt.Errorf("failed to restore ownership: %v", err)
 		}
 	}
 
 	if workspacePath != "" {
 		if err := handlePostExecution(agentCfg, cfg, cwd, taskName, workspacePath); err != nil {
-			log.Error(fmt.Sprintf("Failed to handle post-execution: %v", err))
+			return fmt.Errorf("failed to handle post-execution: %v", err)
 		}
 	}
 
-	os.Exit(exitCode)
 	return nil
 }
 
@@ -281,7 +280,6 @@ func handlePostExecution(agentCfg *config.AgentConfig, cfg *config.Config, cwd, 
 
 	clean, err := git.IsRepositoryClean(workspacePath)
 	if err != nil {
-		log.Error(fmt.Sprintf("Failed to check repository status: %v", err))
 		return fmt.Errorf("failed to check repository status: %w", err)
 	}
 
@@ -292,7 +290,6 @@ func handlePostExecution(agentCfg *config.AgentConfig, cfg *config.Config, cwd, 
 
 	changedFiles, err := git.GetChangedFiles(workspacePath)
 	if err != nil {
-		log.Error(fmt.Sprintf("Failed to get changed files: %v", err))
 		return fmt.Errorf("failed to get changed files: %w", err)
 	}
 
@@ -302,7 +299,6 @@ func handlePostExecution(agentCfg *config.AgentConfig, cfg *config.Config, cwd, 
 	if syncApproach == "" {
 		syncApproach, err = git.PromptSyncApproach()
 		if err != nil {
-			log.Error(fmt.Sprintf("Failed to prompt for sync approach: %v", err))
 			return fmt.Errorf("failed to prompt for sync approach: %w", err)
 		}
 	}
@@ -311,7 +307,6 @@ func handlePostExecution(agentCfg *config.AgentConfig, cfg *config.Config, cwd, 
 	if !autodelete && syncApproach != "none" {
 		autodelete, err = git.PromptAutoDeleteBranch()
 		if err != nil {
-			log.Error(fmt.Sprintf("Failed to prompt for autodelete: %v", err))
 			return fmt.Errorf("failed to prompt for autodelete: %w", err)
 		}
 	}
@@ -319,7 +314,6 @@ func handlePostExecution(agentCfg *config.AgentConfig, cfg *config.Config, cwd, 
 	branchName := fmt.Sprintf("feature/%s", taskName)
 	err = commitAndPushFromAgent(agentCfg, branchName, workspacePath, cwd)
 	if err != nil {
-		log.Error(fmt.Sprintf("Failed to commit and push changes: %v", err))
 		return fmt.Errorf("failed to commit and push changes: %w", err)
 	}
 
@@ -331,7 +325,6 @@ func handlePostExecution(agentCfg *config.AgentConfig, cfg *config.Config, cwd, 
 	case "none":
 		log.Info("No sync approach selected, leaving changes on feature branch")
 	default:
-		log.Error(fmt.Sprintf("Unknown sync approach: %s", syncApproach))
 		return fmt.Errorf("unknown sync approach: %s", syncApproach)
 	}
 

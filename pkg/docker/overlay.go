@@ -115,10 +115,12 @@ func CopyImageFolderToLower(client *Client, image, imageSourcePath, lowerDir str
 func CleanupOverlay(repoName, agentName, writablePathName, taskName string) error {
 	upperDir := GetUpperDir(repoName, agentName, writablePathName, taskName)
 	workDir := GetWorkDir(repoName, agentName, writablePathName, taskName)
+	tempMount := filepath.Join(workDir, "mnt")
 
-	for _, dir := range []string{upperDir, workDir} {
-		if err := os.RemoveAll(dir); err != nil {
-			log.Error(fmt.Sprintf("Failed to cleanup %s: %v", dir, err))
+	for _, dir := range []string{upperDir, workDir, tempMount} {
+
+		if err := exec.Command("podman", "unshare", "rm", "-rf", dir).Run(); err != nil {
+			return fmt.Errorf("failed to cleanup %s: %w", dir, err)
 		}
 	}
 
