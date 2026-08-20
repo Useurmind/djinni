@@ -188,15 +188,15 @@ func runStartAgent(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to run container: %w", err)
 	}
 
+	deleteOnExit, err = getDeleteOnExitMode(agentCfg.DeleteOnExit, rmFlag)
+	if err != nil {
+		return err
+	}
+
 	if taskName != "" && commands.TempMount != nil {
 		if err := docker.CleanupCopyMounts(repoName, agentName, taskName); err != nil {
 			log.Error(fmt.Sprintf("Failed to cleanup copy mount: %v", err))
 		}
-	}
-
-	deleteOnExit, err = getDeleteOnExitMode(agentCfg.DeleteOnExit, rmFlag)
-	if err != nil {
-		return err
 	}
 
 	mountSources := git.GetMountPaths(agentCfg.Mounts)
@@ -240,22 +240,20 @@ func prepareWorkspace(agentCfg *config.AgentConfig, cwd, agentName, taskName str
 		})
 	}
 
-	if taskName != "" {
-		log.Info("Setting up temp mount for files to copy...")
-		tempMountDir := docker.GetCopyMountDir(repoName, agentName, taskName)
-		if err := os.MkdirAll(tempMountDir, 0755); err != nil {
-			return nil, "", nil, "", fmt.Errorf("failed to create temp mount directory %s: %w", tempMountDir, err)
-		}
-		commands.TempMount = &docker.TempMount{
-			Source:      tempMountDir,
-			Destination: "/copyMount",
-		}
-		for _, fc := range agentCfg.FilesToCopy {
-			destBaseName := filepath.Base(fc.Destination)
-			destPath := filepath.Join(tempMountDir, destBaseName)
-			if err := copyFileToTempMount(fc.Source, destPath); err != nil {
-				return nil, "", nil, "", fmt.Errorf("failed to copy %s to temp mount: %w", fc.Source, err)
-			}
+	tempMountDir := docker.GetCopyMountDir(repoName, agentName, taskName)
+	log.Info("Setting up temp mount for files to copy in %s...", tempMountDir)
+	if err := os.MkdirAll(tempMountDir, 0755); err != nil {
+		return nil, "", nil, "", fmt.Errorf("failed to create temp mount directory %s: %w", tempMountDir, err)
+	}
+	commands.TempMount = &docker.TempMount{
+		Source:      tempMountDir,
+		Destination: "/copyMount",
+	}
+	for _, fc := range commands.FilesToCopy {
+		destPath := filepath.Join(tempMountDir, fc.Name())
+		log.Info(" - Copying to temp mount: %s -> %s", fc.Source, fc.Name())
+		if err := copyFileToTempMount(fc.Source, destPath); err != nil {
+			return nil, "", nil, "", fmt.Errorf("failed to copy %s to temp mount: %w", fc.Source, err)
 		}
 	}
 

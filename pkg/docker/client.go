@@ -172,10 +172,9 @@ func (c *Client) generateEntrypoint(harnessCmd []string, commands *ContainerComm
 		fmt.Fprintf(&builder, "TEMP_MOUNT_DIR=\"%s\"\n", commands.TempMount.Destination)
 		for _, file := range commands.FilesToCopy {
 			fmt.Fprintf(&builder, "mkdir -p \"%s\"\n", filepath.Dir(file.Destination))
-			fmt.Fprintf(&builder, "cp \"%s/%s\" \"%s\"\n", commands.TempMount.Destination, filepath.Base(file.Source), file.Destination)
+			fmt.Fprintf(&builder, "cp \"%s/%s\" \"%s\"\n", commands.TempMount.Destination, file.Name(), file.Destination)
 		}
 		builder.WriteString("echo 'File copy complete'\n")
-		fmt.Fprintf(&builder, "rm -rf \"%s\"\n", commands.TempMount.Destination)
 	}
 
 	for _, preCmd := range commands.PreCommands {
