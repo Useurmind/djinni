@@ -28,6 +28,8 @@ func LoadConfig(path string) (*Config, error) {
 		return nil, err
 	}
 
+	ExpandConfigPaths(&cfg)
+
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}

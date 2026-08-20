@@ -1,6 +1,7 @@
 package config
 
 import (
+	"os"
 	"testing"
 )
 
@@ -461,6 +462,200 @@ func TestAuthConfig_Validate(t *testing.T) {
 			err := tt.authConfig.Validate()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestExpandPath(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "path with ~",
+			input:    "~/.config/opencode",
+			expected: os.Getenv("HOME") + "/.config/opencode",
+		},
+		{
+			name:     "path with env var",
+			input:    "$HOME/.config/opencode",
+			expected: os.Getenv("HOME") + "/.config/opencode",
+		},
+		{
+			name:     "path with ${var} syntax",
+			input:    "${HOME}/.config/opencode",
+			expected: os.Getenv("HOME") + "/.config/opencode",
+		},
+		{
+			name:     "absolute path",
+			input:    "/home/user/.config/opencode",
+			expected: "/home/user/.config/opencode",
+		},
+		{
+			name:     "relative path",
+			input:    "./some/path",
+			expected: "./some/path",
+		},
+		{
+			name:     "mixed ~ and env var",
+			input:    "~/$USER",
+			expected: os.Getenv("HOME") + "/" + os.Getenv("USER"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ExpandPath(tt.input)
+			if result != tt.expected {
+				t.Errorf("ExpandPath(%q) = %q, want %q", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestExpandConfigPaths(t *testing.T) {
+	homeDir, _ := os.UserHomeDir()
+
+	tests := []struct {
+		name     string
+		input    *Config
+		expected *Config
+	}{
+		{
+			name: "expand paths in mounts",
+			input: &Config{
+				Agents: map[string]*AgentConfig{
+					"test": {
+						Mounts: []Mount{
+							{Source: "~/.config", Destination: "/dest"},
+							{Source: "$HOME/data", Destination: "/data"},
+						},
+					},
+				},
+			},
+			expected: &Config{
+				Agents: map[string]*AgentConfig{
+					"test": {
+						Mounts: []Mount{
+							{Source: homeDir + "/.config", Destination: "/dest"},
+							{Source: homeDir + "/data", Destination: "/data"},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "expand paths in files_to_copy",
+			input: &Config{
+				Agents: map[string]*AgentConfig{
+					"test": {
+						FilesToCopy: []FilesToCopy{
+							{Source: "~/.gitconfig", Destination: "/dest"},
+						},
+					},
+				},
+			},
+			expected: &Config{
+				Agents: map[string]*AgentConfig{
+					"test": {
+						FilesToCopy: []FilesToCopy{
+							{Source: homeDir + "/.gitconfig", Destination: "/dest"},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "expand paths in tmpfs_mounts",
+			input: &Config{
+				Agents: map[string]*AgentConfig{
+					"test": {
+						TmpfsMounts: []TmpfsMount{
+							{Destination: "/$VAR"},
+						},
+					},
+				},
+			},
+			expected: &Config{
+				Agents: map[string]*AgentConfig{
+					"test": {
+						TmpfsMounts: []TmpfsMount{
+							{Destination: "/$VAR"},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "expand paths in all fields",
+			input: &Config{
+				Agents: map[string]*AgentConfig{
+					"test": {
+						Mounts: []Mount{
+							{Source: "~/.config", Destination: "/dest"},
+						},
+						FilesToCopy: []FilesToCopy{
+							{Source: "~/.gitconfig", Destination: "/dest"},
+						},
+					},
+				},
+			},
+			expected: &Config{
+				Agents: map[string]*AgentConfig{
+					"test": {
+						Mounts: []Mount{
+							{Source: homeDir + "/.config", Destination: "/dest"},
+						},
+						FilesToCopy: []FilesToCopy{
+							{Source: homeDir + "/.gitconfig", Destination: "/dest"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ExpandConfigPaths(tt.input)
+			result := tt.input
+
+			if len(result.Agents["test"].Mounts) != len(tt.expected.Agents["test"].Mounts) {
+				t.Errorf("Mounts length = %d, want %d", len(result.Agents["test"].Mounts), len(tt.expected.Agents["test"].Mounts))
+			}
+
+			for i := range result.Agents["test"].Mounts {
+				if result.Agents["test"].Mounts[i].Source != tt.expected.Agents["test"].Mounts[i].Source {
+					t.Errorf("Mounts[%d].Source = %q, want %q", i, result.Agents["test"].Mounts[i].Source, tt.expected.Agents["test"].Mounts[i].Source)
+				}
+				if result.Agents["test"].Mounts[i].Destination != tt.expected.Agents["test"].Mounts[i].Destination {
+					t.Errorf("Mounts[%d].Destination = %q, want %q", i, result.Agents["test"].Mounts[i].Destination, tt.expected.Agents["test"].Mounts[i].Destination)
+				}
+			}
+
+			if len(result.Agents["test"].FilesToCopy) != len(tt.expected.Agents["test"].FilesToCopy) {
+				t.Errorf("FilesToCopy length = %d, want %d", len(result.Agents["test"].FilesToCopy), len(tt.expected.Agents["test"].FilesToCopy))
+			}
+
+			for i := range result.Agents["test"].FilesToCopy {
+				if result.Agents["test"].FilesToCopy[i].Source != tt.expected.Agents["test"].FilesToCopy[i].Source {
+					t.Errorf("FilesToCopy[%d].Source = %q, want %q", i, result.Agents["test"].FilesToCopy[i].Source, tt.expected.Agents["test"].FilesToCopy[i].Source)
+				}
+				if result.Agents["test"].FilesToCopy[i].Destination != tt.expected.Agents["test"].FilesToCopy[i].Destination {
+					t.Errorf("FilesToCopy[%d].Destination = %q, want %q", i, result.Agents["test"].FilesToCopy[i].Destination, tt.expected.Agents["test"].FilesToCopy[i].Destination)
+				}
+			}
+
+			if len(result.Agents["test"].WritablePaths) != len(tt.expected.Agents["test"].WritablePaths) {
+				t.Errorf("WritablePaths length = %d, want %d", len(result.Agents["test"].WritablePaths), len(tt.expected.Agents["test"].WritablePaths))
+			}
+
+			for i := range result.Agents["test"].WritablePaths {
+				if result.Agents["test"].WritablePaths[i].Destination != tt.expected.Agents["test"].WritablePaths[i].Destination {
+					t.Errorf("WritablePaths[%d].Destination = %q, want %q", i, result.Agents["test"].WritablePaths[i].Destination, tt.expected.Agents["test"].WritablePaths[i].Destination)
+				}
 			}
 		})
 	}

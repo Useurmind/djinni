@@ -7,13 +7,13 @@ agents:
     # sync_approach: git_patch
     forceReadOnlyRootOff: false
     mounts:
-      - source: /home/jgruen/.config/opencode
+      - source: ~/.config/opencode
         destination: /home/agent/.config/opencode
-      - source: /home/jgruen/.config/djinni
+      - source: ~/.config/djinni
         destination: /home/agent/.config/djinni
-      - source: /home/jgruen/.local/state/opencode
+      - source: ~/.local/state/opencode
         destination: /home/agent/.local/state/opencode
-      - source: /home/jgruen/.local/share/opencode
+      - source: ~/.local/share/opencode
         destination: /home/agent/.local/share/opencode
     tmpfsMounts:
       - destination: /cache

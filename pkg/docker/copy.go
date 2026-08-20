@@ -2,10 +2,8 @@ package docker
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
 	"path"
-	"strings"
 	"time"
 
 	"github.com/useurmind/djinni/pkg/log"
@@ -78,31 +76,14 @@ func copyFileToContainer(containerID, source, destination string, client *Client
 		return fmt.Errorf("failed to create directory %s: %w, output: %s", destDir, err, string(output))
 	}
 
-	hostSourcePath, err := getHostPathForSource(source)
-	if err != nil {
-		return err
-	}
-
-	cmd = exec.Command(client.Binary, "cp", hostSourcePath, containerID+":"+destination)
+	cmd = exec.Command(client.Binary, "cp", source, containerID+":"+destination)
 	output, err = cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("failed to copy %s to %s in container %s: %w, output: %s", hostSourcePath, destination, containerID, err, string(output))
+		return fmt.Errorf("failed to copy %s to %s in container %s: %w, output: %s", source, destination, containerID, err, string(output))
 	}
 
 	return nil
 }
-
-func getHostPathForSource(source string) (string, error) {
-	if strings.HasPrefix(source, "~") {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return "", err
-		}
-		return homeDir + source[1:], nil
-	}
-	return source, nil
-}
-
 func createMarkerFile(containerID string, client *Client) error {
 	cmd := exec.Command(client.Binary, "exec", containerID, "mkdir", "-p", DefaultAgentHome, "&&", "touch", DefaultAgentMarker)
 	output, err := cmd.CombinedOutput()
