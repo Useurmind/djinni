@@ -7,3 +7,7 @@ To alleviate the problem we want to change the copy process.
 - copy the files inside the container in the entrypoint from the bind mounted tmp dir to the destination
 
 This makes everything simpler as no asynchronous logic is required anymore.
+
+The files that should be copied are defined by `files_to_copy` field in the configuration.
+The `.gitconfig` is already added to this list automatically.
+No new configuration is required for this.

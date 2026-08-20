@@ -142,7 +142,7 @@ func (c *Client) runContainer(image string, cmd []string, name string, mounts []
 	for _, m := range mounts {
 		var mountStr string
 		if m.ReadOnly {
-			mountStr = fmt.Sprintf("%s:%s:Z,RO,U", m.Source, m.Destination)
+			mountStr = fmt.Sprintf("%s:%s:Z,ro,U", m.Source, m.Destination)
 		} else {
 			mountStr = fmt.Sprintf("%s:%s:Z,U", m.Source, m.Destination)
 		}
@@ -150,7 +150,7 @@ func (c *Client) runContainer(image string, cmd []string, name string, mounts []
 	}
 
 	if commands.TempMount != nil {
-		args = append(args, "-v", fmt.Sprintf("%s:%s:Zro,U", commands.TempMount.Source, commands.TempMount.Destination))
+		args = append(args, "-v", fmt.Sprintf("%s:%s:Z,ro,U", commands.TempMount.Source, commands.TempMount.Destination))
 	}
 
 	args = append(args, "--entrypoint", "/bin/bash")

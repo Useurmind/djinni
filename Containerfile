@@ -26,6 +26,7 @@ RUN go install golang.org/x/tools/cmd/deadcode@latest
 RUN go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
 RUN go install golang.org/x/tools/gopls@latest
 
+RUN rm -rf /home/agent/go/pkg/
 
 RUN curl -fsSL https://opencode.ai/install | bash
 
