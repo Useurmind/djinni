@@ -11,6 +11,11 @@ type FilesToCopy struct {
 	Destination string
 }
 
+type TempMount struct {
+	Source      string
+	Destination string
+}
+
 type WritablePath struct {
 	Name        string
 	Destination string

@@ -149,34 +149,15 @@ func (c *Client) runContainer(image string, cmd []string, name string, mounts []
 		args = append(args, "-v", mountStr)
 	}
 
+	if commands.TempMount != nil {
+		args = append(args, "-v", fmt.Sprintf("%s:%s:Zro,U", commands.TempMount.Source, commands.TempMount.Destination))
+	}
+
 	args = append(args, "--entrypoint", "/bin/bash")
 	args = append(args, image)
 	args = append(args, "-i", "-c", entrypoint)
 
 	log.Info(fmt.Sprintf("Running: %s %s", c.Binary, strings.Join(args, " ")))
-
-	if len(commands.FilesToCopy) > 0 {
-		copyErrChan := CopyFilesAsync(name, commands.FilesToCopy, c)
-		cmd := exec.Command(c.Binary, args...)
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		err := cmd.Run()
-		if err != nil {
-			exitErr, ok := err.(*exec.ExitError)
-			if ok {
-				<-copyErrChan
-				return exitErr.ExitCode(), nil
-			}
-			<-copyErrChan
-			return 1, fmt.Errorf("%s %s: %w", c.Binary, strings.Join(args, " "), err)
-		}
-		err = <-copyErrChan
-		if err != nil {
-			return 1, err
-		}
-		return 0, nil
-	}
 
 	return c.runCommand(args)
 }
@@ -186,12 +167,15 @@ func (c *Client) generateEntrypoint(harnessCmd []string, commands *ContainerComm
 
 	builder.WriteString("set -e\n")
 
-	if len(commands.FilesToCopy) > 0 {
-		builder.WriteString("echo 'Waiting for files to be copied...'\n")
-		builder.WriteString("while [ ! -e \"" + DefaultAgentMarker + "\" ]; do\n")
-		builder.WriteString("  sleep 0.5\n")
-		builder.WriteString("done\n")
-		builder.WriteString("echo 'Files copied successfully'\n")
+	if commands.TempMount != nil && len(commands.FilesToCopy) > 0 {
+		builder.WriteString("echo 'Copying files from temp mount to destinations...'\n")
+		fmt.Fprintf(&builder, "TEMP_MOUNT_DIR=\"%s\"\n", commands.TempMount.Destination)
+		for _, file := range commands.FilesToCopy {
+			fmt.Fprintf(&builder, "mkdir -p \"%s\"\n", filepath.Dir(file.Destination))
+			fmt.Fprintf(&builder, "cp \"%s/%s\" \"%s\"\n", commands.TempMount.Destination, filepath.Base(file.Source), file.Destination)
+		}
+		builder.WriteString("echo 'File copy complete'\n")
+		fmt.Fprintf(&builder, "rm -rf \"%s\"\n", commands.TempMount.Destination)
 	}
 
 	for _, preCmd := range commands.PreCommands {

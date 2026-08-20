@@ -25,6 +25,17 @@ func execCommand(name string, args []string, workdir string) error {
 	return nil
 }
 
+func copyFileToTempMount(src, dst string) error {
+	data, err := os.ReadFile(src)
+	if err != nil {
+		return fmt.Errorf("failed to read source file %s: %w", src, err)
+	}
+	if err := os.WriteFile(dst, data, 0644); err != nil {
+		return fmt.Errorf("failed to write to temp mount %s: %w", dst, err)
+	}
+	return nil
+}
+
 func getDeleteOnExitMode(configValue string, rmFlag bool) (string, error) {
 	if rmFlag {
 		return "all", nil
@@ -126,10 +137,11 @@ func runStartAgent(cmd *cobra.Command, args []string) error {
 
 			if deleteOnExit == "all" {
 				if err = docker.CleanupOverlay(repoName, agentName, mp.wpName, taskName); err != nil {
-					log.Error(fmt.Sprintf("Failed to unmount overlay at %s: %v", mp.mountPath, err))
+					log.Error(fmt.Sprintf("Failed to cleanup overlay at %s: %v", mp.mountPath, err))
 				}
 			}
 		}
+
 		if workspacePath != "" && deleteOnExit == "all" {
 			log.Info("Deleting workspace...")
 			if err := os.RemoveAll(workspacePath); err != nil {
@@ -176,6 +188,12 @@ func runStartAgent(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to run container: %w", err)
 	}
 
+	if taskName != "" && commands.TempMount != nil {
+		if err := docker.CleanupCopyMounts(repoName, agentName, taskName); err != nil {
+			log.Error(fmt.Sprintf("Failed to cleanup copy mount: %v", err))
+		}
+	}
+
 	deleteOnExit, err = getDeleteOnExitMode(agentCfg.DeleteOnExit, rmFlag)
 	if err != nil {
 		return err
@@ -220,6 +238,25 @@ func prepareWorkspace(agentCfg *config.AgentConfig, cwd, agentName, taskName str
 			Source:      fc.Source,
 			Destination: fc.Destination,
 		})
+	}
+
+	if taskName != "" {
+		log.Info("Setting up temp mount for files to copy...")
+		tempMountDir := docker.GetCopyMountDir(repoName, agentName, taskName)
+		if err := os.MkdirAll(tempMountDir, 0755); err != nil {
+			return nil, "", nil, "", fmt.Errorf("failed to create temp mount directory %s: %w", tempMountDir, err)
+		}
+		commands.TempMount = &docker.TempMount{
+			Source:      tempMountDir,
+			Destination: "/copyMount",
+		}
+		for _, fc := range agentCfg.FilesToCopy {
+			destBaseName := filepath.Base(fc.Destination)
+			destPath := filepath.Join(tempMountDir, destBaseName)
+			if err := copyFileToTempMount(fc.Source, destPath); err != nil {
+				return nil, "", nil, "", fmt.Errorf("failed to copy %s to temp mount: %w", fc.Source, err)
+			}
+		}
 	}
 
 	if workspacePath != "" {

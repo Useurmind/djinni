@@ -19,6 +19,7 @@ const (
 	LowerSubdir         = "lower"
 	UpperSubdir         = "upper"
 	WorkSubdir          = "work"
+	CopyMountsSubdir    = "copyMounts"
 )
 
 func GetWritablePathDir(repoName, agentName, writablePathName string) string {
@@ -35,6 +36,10 @@ func GetUpperDir(repoName, agentName, writablePathName, taskName string) string 
 
 func GetWorkDir(repoName, agentName, writablePathName, taskName string) string {
 	return filepath.Join(GetWritablePathDir(repoName, agentName, writablePathName), WorkSubdir, taskName)
+}
+
+func GetCopyMountDir(repoName, agentName, taskName string) string {
+	return filepath.Join(DefaultBaseDir, repoName, agentName, CopyMountsSubdir, taskName)
 }
 
 func CreateOverlayStructure(repoName, agentName, writablePathName string) error {
@@ -125,5 +130,16 @@ func CleanupOverlay(repoName, agentName, writablePathName, taskName string) erro
 	}
 
 	log.Info(fmt.Sprintf("Cleaned up overlayfs directories for %s", writablePathName))
+	return nil
+}
+
+func CleanupCopyMounts(repoName, agentName, taskName string) error {
+	tempMountDir := GetCopyMountDir(repoName, agentName, taskName)
+
+	if err := exec.Command("podman", "unshare", "rm", "-rf", tempMountDir).Run(); err != nil {
+		return fmt.Errorf("failed to cleanup copy mount %s: %w", tempMountDir, err)
+	}
+
+	log.Info(fmt.Sprintf("Cleaned up copy mount directories for %s", taskName))
 	return nil
 }

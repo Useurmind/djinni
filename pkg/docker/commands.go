@@ -12,4 +12,5 @@ type ContainerCommands struct {
 	ForceReadOnlyRootOff bool
 	TmpfsMounts          []TmpfsMount
 	WritablePaths        []WritablePath
+	TempMount            *TempMount
 }
