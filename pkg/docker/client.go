@@ -195,3 +195,18 @@ func (c *Client) generateEntrypoint(harnessCmd []string, commands *ContainerComm
 
 	return builder.String()
 }
+
+func (c *Client) ExecInContainer(containerName string, cmd []string) (int, error) {
+	args := []string{"exec", "-it"}
+
+	if len(cmd) == 0 {
+		cmd = []string{"bash"}
+	}
+
+	args = append(args, containerName)
+	args = append(args, cmd...)
+
+	log.Info(fmt.Sprintf("Running: %s %s", c.Binary, strings.Join(args, " ")))
+
+	return c.runCommand(args)
+}
