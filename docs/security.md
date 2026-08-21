@@ -1,65 +1,40 @@
 # Security and Isolation
 
-Djinni provides multiple layers of security isolation for AI agents running in containers. This document describes the isolation model and how it compares to other approaches.
+Djinni provides multiple layers of security isolation for AI agents running in containers. This document describes the isolation model and implementation details.
 
 ## Container-Based Isolation
 
-### Non-Root User
+### Container Runtime
 
-Each agent runs as a non-root user (`agent`) inside the container. The container image creates a dedicated user:
+Djinni uses **Podman** as the container runtime (see `pkg/docker/client.go:21`). Podman provides:
+- Rootless container execution support
+- Built-in user namespace mapping
+-SELinux integration without requiring systemd
 
-```dockerfile
-RUN useradd -m -s /bin/bash agent
-USER agent
-WORKDIR /home/agent
-```
-
-This prevents:
-- Container escape attacks that rely on root privileges
-- Unauthorized system modifications within the container
-- Access to sensitive host files that require root
-
-### Separate User Namespace
-
-Djinni uses separate user namespaces to isolate the agent from the host system:
-
-- The `agent` user inside the container has different UID/GID than the host user
-- Permissions are mapped to prevent cross-contamination
-- File operations are constrained to the container's filesystem
+All container operations use Podman explicitly (see `pkg/docker/overlay.go:99,127,139`).
 
 ### Volume Mounts with SELinux Labels
 
-All volume mounts use SELinux labels for additional isolation:
+All volume mounts use SELinux labels for isolation:
 
 ```go
 // Read-only mounts
-"-v", "source:destination:Z,RO,U"
+"-v", "source:destination:Z,ro,U"
 
 // Read-write mounts
 "-v", "source:destination:Z,U"
 ```
 
-The `:Z` flag indicates private shared SELinux label, and `:U` flag maps the mount to the user namespace.
+The flags mean:
+- `:Z` — Private shared SELinux label (automatically relabeled)
+- `:ro` — Read-only access (only for explicit read-only mounts)
+- `:U` — User namespace mapping (SELinux user mapping)
 
-### Read-Only Mounts
-
-Sensitive configuration can be mounted as read-only:
-
-```yaml
-mounts:
-  - source: ~/.kube/config
-    destination: /home/agent/.kube/config
-    readOnly: true
-```
-
-This prevents:
-- Malicious agents from tampering with configuration
-- Accidental modification of critical files
-- Ransomware-style encryption of configuration
+Mounts are configured in `pkg/docker/client.go:139-147`.
 
 ### Read-Only Root Filesystem
 
-Djinni enables read-only root filesystem by default for maximum security:
+Djinni enables read-only root filesystem by default:
 
 ```yaml
 agents:
@@ -72,6 +47,8 @@ agents:
       - destination: /cache
         size: "512m"
 ```
+
+控制通过 `forceReadOnlyRootOff: true` 禁用。实现见 `pkg/docker/client.go:125-127`。
 
 **Read-only root prevents:**
 - Container escape attacks modifying system files
@@ -89,19 +66,47 @@ tmpfsMounts:
     size: "512m"
 ```
 
-**Benefits of tmpfs:**
+**Benefits:**
 - Data automatically cleared on container exit
 - RAM-backed performance for temporary files
 - No host filesystem exposure
-- Size limits prevent memory exhaustion
+- Size limits prevent memory exhaustion (see `pkg/docker/client.go:129-137`)
 
+### Overlay-Based Writable Paths
 
+For agents needing persistent writable storage, Djinni uses **overlayfs** with upper/lower/work directory structure:
+
+```yaml
+agents:
+  secure-agent:
+    harness_command: [opencode]
+    containerfile: ./Containerfile
+    writablePaths:
+      - name: home
+        destination: /home/agent
+```
+
+**How it works:**
+- **Lower directory** — Read-only content from container image (populated at startup)
+- **Upper directory** — Write layer (task-specific, isolated per execution)
+- **Work directory** — Overlayfs working files
+- Mount path: `/tmp/djinni/repo/agent/writablePaths/{name}/mnt`
+
+**Benefits:**
+- Write operations isolated to upper directory
+- Content from image preserved in lower directory
+- Task-specific isolation via upper directory naming
+- Cleanup on task completion (see `pkg/docker/overlay.go:120-144`)
+
+**Implementation details:**
+- Overlay structure created at `/tmp/djinni/{repo}/{agent}/writablePaths/{name}/`
+- Lower directory populated by copying from container image (see `pkg/docker/overlay.go:60-118`)
+- Uses `podman unshare` for namespace-aware file operations
+- Temporary container created to extract image content (see `TempContainerName` constant)
 
 ### File Copy Mechanism
 
-Critical files (like `.gitconfig`, SSH keys) are copied into the container rather than mounted:
-
-(The gitconfig is automatically copied to the agent container with this mechanism, no need to configure it here)
+Critical files are copied into the container via a temporary mount:
 
 ```yaml
 files_to_copy:
@@ -109,82 +114,69 @@ files_to_copy:
     destination: /home/agent/.gitconfig
 ```
 
-This approach provides:
-- Static snapshot of files at container startup
-- No live symlink to host files (cannot be modified from within container)
+**Process:**
+1. Temp mount created at `/tmp/djinni/{repo}/{agent}/copyMounts/{task}/`
+2. Source files copied to temp mount
+3. Container entrypoint copies files to destinations (see `pkg/docker/client.go:167-175`)
+4. Temp mount cleaned up after execution
+
+**Benefits:**
+- Static snapshot at container startup
+- No live symlink to host files
 - Independent file ownership and permissions
+- Prevents live modification from within container
 
-## Comparison with VS Code Agent Isolation
+### Git Workspace Isolation
 
-### VS Code Remote Containers
-
-VS Code agents typically run in containers with:
-
-| Aspect | VS Code Remote | Djinni |
-|--------|---------------|--------|
-| User | Root (default) or dev user | Non-root `agent` user |
-| SELinux labeling | Optional | Mandatory (`:Z,U` flags) |
-| File system access | Mounts entire workspace | Granular mounts + file copy |
-| Default permissions | Full workspace read/write | Limited scope |
-| Network isolation | Host network | Bridge network only |
-
-### Key Security Advantages
-
-1. **Default non-root**: Djinni always uses non-root user; VS Code often uses root
-2. **SELinux enforcement**: Djinni applies `:Z,U` labels by default
-3. **Granular file access**: Djinni uses file copy for sensitive data
-4. **Network isolation**: Djinni uses bridge network; VS Code uses host network
-
-## Running TUI Agents Inside Containers
-
-TUI (Text User Interface) agents can run inside Djinni containers with enhanced security:
-
-### Supported TUI Frameworks
-
-- **opencode**: Run directly via `harness_command: [opencode]`
-- **Custom TUI applications**: Build them into the container image
-- **SSH-based TUI**: Use SSH inside container for terminal access
-
-### Container Configuration
-
-```dockerfile
-FROM ubuntu:24.04
-
-RUN apt-get update && apt-get install -y \
-    git \
-    curl \
-    make \
-    build-essential \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN useradd -m -s /bin/bash agent
-USER agent
-WORKDIR /home/agent
-
-CMD ["opencode"]
-```
-
-### Agent Configuration
+Git operations use isolated workspace directories:
 
 ```yaml
 agents:
-  tui-agent:
-    harness_command:
-      - opencode
+  git-agent:
+    harness_command: [python, -m, agent.harness]
     containerfile: ./Containerfile
-    mounts:
-      - source: ~/.config/opencode
-        destination: /home/agent/.config/opencode
-        readOnly: true
+    git_workspace:
+      base_directory: /tmp/git-agent
 ```
 
-### Benefits of TUI in Container
+**Details:**
+- Default: `/tmp/djinni` (see `pkg/config/types.go:6`)
+- Configurable per-agent via `base_directory`
+- Isolated from host filesystem
+- Typically mounted as tmpfs or overlay path
 
-1. **No GUI dependencies**: TUI works without X11/Wayland
-2. **Reduced attack surface**: No display server to exploit
-3. **Simplified isolation**: No GPU or display permissions needed
-4. **Deterministic environment**: TUI behaves identically across hosts
+### Network Isolation
+
+Djinni uses **bridge networking** (hardcoded, see `pkg/docker/client.go:123`):
+
+```go
+args := []string{"run", "--rm", "-it", "--network", "bridge", "--name", name}
+```
+
+**Implications:**
+- Containers cannot access host services directly
+- No container-to-container communication
+- Outbound access limited to bridge interface
+- No host network mode available
+
+## Security Model Summary
+
+Djinni's security model focuses on:
+
+| Layer | Implementation | Purpose |
+|-------|---------------|---------|
+| Container runtime | Podman (rootless support) | Secure container execution |
+| File system isolation | SELinux `:Z,U` labels | Prevent cross-contamination |
+| Mount isolation | Granular read/write mounts | Limit file access scope |
+| Root filesystem | Read-only by default | Prevent filesystem modifications |
+| Writable paths | Overlayfs (upper/lower/work) | Isolated writable storage |
+| Network isolation | Bridge network (hardcoded) | Restrict container communications |
+| File copying | Temporary mount + copy | Static file snapshots |
+| Namespace isolation | User namespace mapping | Isolate from host UIDs/GIDs |
+| Temporary storage | Tmpfs mounts | Secure in-memory storage |
+| Git workspace | Isolated base directory | Container-internal git ops |
+
+This multi-layered approach provides defense-in-depth against container escape and lateral movement attacks.
 
 ## Security Best Practices
 
@@ -201,7 +193,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 ### 2. Read-Only Root Filesystem
 
-Enable read-only root filesystem in agent configuration:
+Enable read-only root (default):
 
 ```yaml
 agents:
@@ -211,39 +203,42 @@ agents:
       - destination: /tmp
 ```
 
-### 3. Network Restrictions
+### 3. Use Overlay for Writable Paths
 
-Djinni uses bridge networking to restrict container access to the host:
-
-- Containers cannot access host services directly
-- No direct container-to-container communication
-- Outbound network access limited to bridge
-
-### 4. Resource Limits
-
-Configure CPU and memory limits in production:
+For agents needing write access:
 
 ```yaml
 agents:
-  restricted-agent:
-    harness_command: [opencode]
-    image: opencode:latest
-    # Add host_config for memory limits
+  worker-agent:
+    harness_command: [python, -m, agent.harness]
+    containerfile: ./Containerfile
+    writablePaths:
+      - name: data
+        destination: /app/data
 ```
 
-## Security Model Summary
+### 4. Copy Sensitive Files
 
-Djinni's security model focuses on:
+Use `files_to_copy` for secrets/config instead of mounts:
 
-| Layer | Implementation | Purpose |
-|-------|---------------|---------|
-| User isolation | Non-root `agent` user | Prevent privilege escalation |
-| Namespace isolation | Separate user namespace | Isolate from host |
-| File system isolation | SELinux `:Z,U` labels | Prevent cross-contamination |
-| Mount isolation | Granular read/write mounts | Limit file access scope |
-| Network isolation | Bridge network | Restrict container comms |
-| File copying | Static file copy | Prevent live symlink attacks |
-| Root filesystem isolation | Read-only root | Prevent filesystem modifications |
-| Temporary storage | Tmpfs mounts | Secure writable temporary storage |
+```yaml
+agents:
+  secure-agent:
+    files_to_copy:
+      - source: ~/.ssh/id_rsa
+        destination: /home/agent/.ssh/id_rsa
+```
 
-This multi-layered approach provides defense-in-depth against container escape and lateral movement attacks.
+### 5. Network Restrictions
+
+Djinni enforces bridge networking. Avoid requiring host network access.
+
+### 6. Resource Limits
+
+Configure CPU/memory limits at Podman level when running Djinni:
+
+```bash
+podman run --memory=512m --cpus=1.0 ...
+```
+
+Note: Current implementation doesn't expose resource limits in agent config.
