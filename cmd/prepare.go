@@ -11,8 +11,8 @@ import (
 	"github.com/useurmind/djinni/pkg/log"
 )
 
-var prepareAgentCmd = &cobra.Command{
-	Use:   "prepare-agent <agent-name>",
+var prepareCmd = &cobra.Command{
+	Use:   "prepare <agent-name>",
 	Short: "Build a local container image for an agent",
 	Long:  `Build a local container image for an agent using the configuration from .djinni.yml`,
 	Args:  cobra.ExactArgs(1),
@@ -82,6 +82,6 @@ var prepareAgentCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(prepareAgentCmd)
-	prepareAgentCmd.Flags().StringP("config", "c", "", "Path to config file (default: .djinni.yml in current directory)")
+	rootCmd.AddCommand(prepareCmd)
+	prepareCmd.Flags().StringP("config", "c", "", "Path to config file (default: .djinni.yml in current directory)")
 }

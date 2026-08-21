@@ -8,8 +8,8 @@ import (
 	"github.com/useurmind/djinni/pkg/docker"
 )
 
-var attachAgentCmd = &cobra.Command{
-	Use:   "attach-agent <agent-name>",
+var attachCmd = &cobra.Command{
+	Use:   "attach <agent-name>",
 	Short: "Attach to a running agent container",
 	Long:  `Attach to a running agent container and execute a command (default: bash)`,
 	Args:  cobra.ExactArgs(1),
@@ -64,6 +64,6 @@ func ensureContainerExists(containerName string) error {
 }
 
 func init() {
-	rootCmd.AddCommand(attachAgentCmd)
-	attachAgentCmd.Flags().StringP("cmd", "c", "", "Command to execute in container (default: bash)")
+	rootCmd.AddCommand(attachCmd)
+	attachCmd.Flags().StringP("cmd", "c", "", "Command to execute in container (default: bash)")
 }

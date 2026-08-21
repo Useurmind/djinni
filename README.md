@@ -16,10 +16,10 @@ Requires Podman.
 
 ```bash
 # Start an agent (requires task name, creates feature/<taskname> branch)
-djinni start-agent <agent-name> --task <task-name>
+djinni start <agent-name> --task <task-name>
 
 # Build a local container image from Containerfile
-djinni prepare-agent <agent-name>
+djinni prepare <agent-name>
 
 # Enable debug mode
 djinni --debug
@@ -97,7 +97,7 @@ See [Configuration Guide](docs/configuration.md#agent-configurations) for detail
 ### Workflow
 
 1. Define agents in `.djinni.yml`
-2. Run `djinni start-agent <name> --task <task>` to execute
+2. Run `djinni start <name> --task <task>` to execute
 3. Agent runs in container, makes changes to git working directory
 4. Changes are committed and pushed to `feature/<task>` branch
 5. Changes sync back per `sync_approach` setting

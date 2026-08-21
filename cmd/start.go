@@ -48,8 +48,8 @@ func getDeleteOnExitMode(configValue string, rmFlag bool) (string, error) {
 	return git.PromptDeleteOnExit()
 }
 
-var startAgentCmd = &cobra.Command{
-	Use:   "start-agent <agent-name>",
+var startCmd = &cobra.Command{
+	Use:   "start <agent-name>",
 	Short: "Start an agent by name from the config",
 	Long:  `Start an agent container using the configuration from .djinni.yml`,
 	Args:  cobra.ExactArgs(1),
@@ -591,12 +591,12 @@ func generateCommitMessage(workingDir, defaultModel string) (string, error) {
 }
 
 func init() {
-	rootCmd.AddCommand(startAgentCmd)
-	startAgentCmd.Flags().StringP("config", "c", "", "Path to config file (default: .djinni.yml in current directory)")
-	startAgentCmd.Flags().StringP("task", "t", "", "Task name for workspace mount (creates feature/<taskname> branch)")
-	startAgentCmd.Flags().String("cmd", "", "Override harness command (comma-separated values, e.g., bash,ls)")
-	startAgentCmd.Flags().Bool("rm", false, "Delete workspace, upperdir, and workdir on exit")
-	if err := startAgentCmd.MarkFlagRequired("task"); err != nil {
+	rootCmd.AddCommand(startCmd)
+	startCmd.Flags().StringP("config", "c", "", "Path to config file (default: .djinni.yml in current directory)")
+	startCmd.Flags().StringP("task", "t", "", "Task name for workspace mount (creates feature/<taskname> branch)")
+	startCmd.Flags().String("cmd", "", "Override harness command (comma-separated values, e.g., bash,ls)")
+	startCmd.Flags().Bool("rm", false, "Delete workspace, upperdir, and workdir on exit")
+	if err := startCmd.MarkFlagRequired("task"); err != nil {
 		log.Error(fmt.Sprintf("Failed to mark flag required: %v", err))
 	}
 }
