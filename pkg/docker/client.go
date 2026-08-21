@@ -19,19 +19,16 @@ type Client struct {
 }
 
 func NewClient() (*Client, error) {
-	for _, binary := range []string{"podman", "docker"} {
-		_, err := exec.LookPath(binary)
-		if err == nil {
-			log.Info(fmt.Sprintf("Detected container runtime: %s", binary))
-			return &Client{
-				Type:   binary,
-				Binary: binary,
-			}, nil
-		}
-		// exec.LookPath returns an error when the binary is not found
-		// This is expected and we should continue checking the next binary
+	binary := "podman"
+	_, err := exec.LookPath(binary)
+	if err != nil {
+		return nil, fmt.Errorf("container runtime %s not found", binary)
 	}
-	return nil, fmt.Errorf("no container runtime found (podman or docker)")
+	log.Info(fmt.Sprintf("Detected container runtime: %s", binary))
+	return &Client{
+		Type:   binary,
+		Binary: binary,
+	}, nil
 }
 
 func (c *Client) RunContainer(image string, cmd []string, name string, mounts []config.Mount, commands *ContainerCommands) (int, error) {

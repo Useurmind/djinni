@@ -9,8 +9,8 @@ import (
 
 var rootCmd = &cobra.Command{
 	Use:          "djinni",
-	Short:        "Run AI agents inside Docker containers for isolation",
-	Long:         `Djinni orchestrates AI agents in Docker containers, providing isolation, resource management, and lifecycle control.`,
+	Short:        "Run AI agents inside Podman containers for isolation",
+	Long:         `Djinni orchestrates AI agents in Podman containers, providing isolation, resource management, and lifecycle control.`,
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmd.Help()

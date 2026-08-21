@@ -16,7 +16,7 @@ A task is complete only when all four succeed.
 
 - **Main entrypoint**: `main.go` → `cmd.Execute()` → root Cobra command
 - **Agent execution**: `pkg/ai/agent.go:Execute()` reads git changes, generates commit messages via LLM
-- **Container runtime**: Auto-detects `podman` or `docker` (see `pkg/docker/client.go:NewClient()`)
+- **Container runtime**: Uses `podman` exclusively (see `pkg/docker/client.go:NewClient()`)
 - **Config file**: `.djinni.yml` defines agents with `harness_command`, `image`/`containerfile`, and mounts
 
 ---
@@ -26,7 +26,7 @@ A task is complete only when all four succeed.
 1. **Git tools**: `GitChangedFilesTool` in `pkg/ai/tools.go` returns diffs for all changed files; returns "No changes detected." if repo is clean
 2. **Test package**: `testify/assert` for assertions; use `require.NoError(t, err, "descriptive message")` for errors
 3. **Test scope**: Skip tests that only verify struct field access—assume that works
-4. **Mount paths in Docker**: Source → destination; use `:z` (rw) or `:zro` (ro) SELinux labels
+4. **Mount paths in Podman**: Source → destination; use `:Z` (rw) or `:Zro` (ro) SELinux labels
 5. **Code Documentation**: Add documentation to structs, struct fields (especially in the config package) and funcs (especially public funcs)
 6. **Code structure**: 
     - Dont make them too long/short, strive to keep functions on single abstraction levels and extract code to new funcs if the abstraction level does not match the current function.

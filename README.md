@@ -1,6 +1,6 @@
 # Djinni
 
-A Go application for running AI agent coding harnesses inside Docker containers for isolation and security during software development.
+A Go application for running AI agent coding harnesses inside Podman containers for isolation and security during software development.
 
 ## TL;DR
 
@@ -10,7 +10,7 @@ A Go application for running AI agent coding harnesses inside Docker containers 
 go install github.com/useurmind/djinni@latest
 ```
 
-Requires Docker or Podman (auto-detected).
+Requires Podman.
 
 ### Commands
 
@@ -83,7 +83,7 @@ See [Configuration Guide](docs/configuration.md#agent-configurations) for detail
 | Option | Description |
 |--------|-------------|
 | `harness_command` | Command to run in container (required) |
-| `image` | Docker image to use (mutually exclusive with `containerfile`) |
+| `image` | Container image to use (mutually exclusive with `containerfile`) |
 | `containerfile` | Build image from local Containerfile |
 | `mounts` | Volume mounts (source → destination) |
 | `files_to_copy` | Files to copy into container (e.g., `.gitconfig`) |
@@ -104,7 +104,7 @@ See [Configuration Guide](docs/configuration.md#agent-configurations) for detail
 
 ## Overview
 
-Djinni provides a framework to manage AI agents in isolated Docker environments. Each agent runs in its own container, ensuring security isolation, resource limits, and clean dependencies.
+Djinni provides a framework to manage AI agents in isolated Podman environments. Each agent runs in its own container, ensuring security isolation, resource limits, and clean dependencies.
 
 ## Security and Isolation
 
@@ -112,7 +112,7 @@ See [Security and Isolation](docs/security.md) for detailed documentation on con
 
 ## Features
 
-- **Container isolation**: Each agent runs in a separate Docker container
+- **Container isolation**: Each agent runs in a separate Podman container
 - **Resource management**: CPU/memory limits per agent
 - **Environment configuration**: Secure environment variable injection
 

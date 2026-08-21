@@ -1,4 +1,4 @@
-Currently we have two functions that start a docker container in `pkg/docker/client.go`.
+Currently we have two functions that start a Podman container in `pkg/docker/client.go`.
 - `runContainerWithCommands`
 - `runContainerDirect`
 

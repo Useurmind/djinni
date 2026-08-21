@@ -25,7 +25,7 @@ The folder structure should be like this
   | - /upper/<taskName>
   | - /work/<taskName>
 
-The lower folder is created  on prepare-agent from the docker image folder via `docker cp`.
+The lower folder is created  on prepare-agent from the container image folder via `podman cp`.
 The upper and work folder are created and mounted with overlayfs during start of an agent.
 
 ## Unshare

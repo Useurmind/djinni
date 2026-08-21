@@ -57,7 +57,7 @@ harness_command:
 
 #### `image` (string) **Conditional**
 
-Docker image to use for the agent. Either `image` or `containerfile` must be specified, but not both.
+Container image to use for the agent. Either `image` or `containerfile` must be specified, but not both.
 
 **Example:**
 ```yaml
@@ -66,7 +66,7 @@ image: python:3.11-slim
 
 #### `containerfile` (string) **Conditional**
 
-Path to a local Containerfile/Dockerfile to build an image from. Either `image` or `containerfile` must be specified, but not both.
+Path to a local Containerfile to build an image from. Either `image` or `containerfile` must be specified, but not both.
 
 **Example:**
 ```yaml

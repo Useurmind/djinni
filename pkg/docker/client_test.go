@@ -14,41 +14,20 @@ func TestNewClient(t *testing.T) {
 		t.Skip("podman not found, skipping test")
 	}
 
-	if _, err := exec.LookPath("docker"); err != nil {
-		t.Log("Docker not found in PATH")
-	}
-
 	tests := []struct {
 		name         string
-		hasDocker    bool
 		hasPodman    bool
 		wantErr      bool
 		expectedType string
 	}{
 		{
-			name:         "docker found when podman not in system",
-			hasDocker:    true,
-			hasPodman:    false,
-			wantErr:      false,
-			expectedType: "docker",
-		},
-		{
 			name:         "podman found",
-			hasDocker:    false,
 			hasPodman:    true,
 			wantErr:      false,
 			expectedType: "podman",
 		},
 		{
-			name:         "both found (prefers podman)",
-			hasDocker:    true,
-			hasPodman:    true,
-			wantErr:      false,
-			expectedType: "podman",
-		},
-		{
-			name:      "neither found",
-			hasDocker: false,
+			name:      "podman not found",
 			hasPodman: false,
 			wantErr:   true,
 		},
@@ -66,13 +45,6 @@ func TestNewClient(t *testing.T) {
 			oldPath := os.Getenv("PATH")
 			defer os.Setenv("PATH", oldPath)
 			os.Setenv("PATH", binDir+string(os.PathListSeparator))
-
-			if tt.hasDocker {
-				dockerPath := filepath.Join(binDir, "docker")
-				if err := os.WriteFile(dockerPath, []byte("#!/bin/sh\nexit 0"), 0755); err != nil {
-					t.Fatalf("Failed to create docker stub: %v", err)
-				}
-			}
 
 			if tt.hasPodman {
 				podmanPath := filepath.Join(binDir, "podman")
@@ -108,26 +80,26 @@ func TestRunContainer(t *testing.T) {
 	tests := []struct {
 		name      string
 		mounts    []config.Mount
-		hasDocker bool
+		hasPodman bool
 	}{
 		{
 			name:      "no mounts",
 			mounts:    []config.Mount{},
-			hasDocker: true,
+			hasPodman: true,
 		},
 		{
 			name: "single read-write mount",
 			mounts: []config.Mount{
 				{Source: "/src", Destination: "/dst", ReadOnly: false},
 			},
-			hasDocker: true,
+			hasPodman: true,
 		},
 		{
 			name: "single read-only mount",
 			mounts: []config.Mount{
 				{Source: "/src", Destination: "/dst", ReadOnly: true},
 			},
-			hasDocker: true,
+			hasPodman: true,
 		},
 		{
 			name: "multiple mounts",
@@ -135,17 +107,17 @@ func TestRunContainer(t *testing.T) {
 				{Source: "/src1", Destination: "/dst1", ReadOnly: false},
 				{Source: "/src2", Destination: "/dst2", ReadOnly: true},
 			},
-			hasDocker: true,
+			hasPodman: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client := &Client{Binary: "docker"}
+			client := &Client{Binary: "podman"}
 
-			dockerPath := filepath.Join(tmpDir, "docker")
-			if err := os.WriteFile(dockerPath, []byte("#!/bin/sh\nexit 0"), 0755); err != nil {
-				t.Fatalf("Failed to create docker stub: %v", err)
+			podmanPath := filepath.Join(tmpDir, "podman")
+			if err := os.WriteFile(podmanPath, []byte("#!/bin/sh\nexit 0"), 0755); err != nil {
+				t.Fatalf("Failed to create podman stub: %v", err)
 			}
 
 			oldPath := os.Getenv("PATH")
@@ -163,11 +135,11 @@ func TestRunContainer(t *testing.T) {
 func TestRunContainer_ReadOnlyRoot(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	client := &Client{Binary: "docker"}
+	client := &Client{Binary: "podman"}
 
-	dockerPath := filepath.Join(tmpDir, "docker")
-	if err := os.WriteFile(dockerPath, []byte("#!/bin/sh\nexit 0"), 0755); err != nil {
-		t.Fatalf("Failed to create docker stub: %v", err)
+	podmanPath := filepath.Join(tmpDir, "podman")
+	if err := os.WriteFile(podmanPath, []byte("#!/bin/sh\nexit 0"), 0755); err != nil {
+		t.Fatalf("Failed to create podman stub: %v", err)
 	}
 
 	oldPath := os.Getenv("PATH")
@@ -222,11 +194,11 @@ func TestRunContainer_TmpfsMounts(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client := &Client{Binary: "docker"}
+			client := &Client{Binary: "podman"}
 
-			dockerPath := filepath.Join(tmpDir, "docker")
-			if err := os.WriteFile(dockerPath, []byte("#!/bin/sh\nexit 0"), 0755); err != nil {
-				t.Fatalf("Failed to create docker stub: %v", err)
+			podmanPath := filepath.Join(tmpDir, "podman")
+			if err := os.WriteFile(podmanPath, []byte("#!/bin/sh\nexit 0"), 0755); err != nil {
+				t.Fatalf("Failed to create podman stub: %v", err)
 			}
 
 			oldPath := os.Getenv("PATH")
@@ -251,43 +223,43 @@ func TestBuildContainer(t *testing.T) {
 	tests := []struct {
 		name                 string
 		containerfileContent []byte
-		hasDocker            bool
+		hasPodman            bool
 		wantErr              bool
 	}{
 		{
 			name:                 "successful build",
 			containerfileContent: []byte("FROM alpine\nCMD echo hello"),
-			hasDocker:            true,
+			hasPodman:            true,
 			wantErr:              false,
 		},
 		{
 			name:                 "containerfile not found - empty path",
 			containerfileContent: nil,
-			hasDocker:            true,
+			hasPodman:            true,
 			wantErr:              true,
 		},
 		{
 			name:                 "containerfile not found - nonexistent path",
 			containerfileContent: nil,
-			hasDocker:            true,
+			hasPodman:            true,
 			wantErr:              true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client := &Client{Binary: "docker"}
+			client := &Client{Binary: "podman"}
 
-			containerfilePath := filepath.Join(tmpDir, "Dockerfile")
+			containerfilePath := filepath.Join(tmpDir, "Containerfile")
 			if tt.containerfileContent != nil {
 				if err := os.WriteFile(containerfilePath, tt.containerfileContent, 0644); err != nil {
-					t.Fatalf("Failed to create Dockerfile: %v", err)
+					t.Fatalf("Failed to create Containerfile: %v", err)
 				}
 			}
 
-			dockerPath := filepath.Join(tmpDir, "docker")
-			if err := os.WriteFile(dockerPath, []byte("#!/bin/sh\necho Built"), 0755); err != nil {
-				t.Fatalf("Failed to create docker stub: %v", err)
+			podmanPath := filepath.Join(tmpDir, "podman")
+			if err := os.WriteFile(podmanPath, []byte("#!/bin/sh\necho Built"), 0755); err != nil {
+				t.Fatalf("Failed to create podman stub: %v", err)
 			}
 
 			oldPath := os.Getenv("PATH")
@@ -298,7 +270,7 @@ func TestBuildContainer(t *testing.T) {
 			if tt.containerfileContent != nil {
 				path = containerfilePath
 			} else {
-				path = "/nonexistent/path/Dockerfile"
+				path = "/nonexistent/path/Containerfile"
 			}
 
 			exitCode, err := client.BuildContainer("test", "test", path)
@@ -314,9 +286,9 @@ func TestBuildContainer(t *testing.T) {
 }
 
 func TestBuildContainer_FileNotFound(t *testing.T) {
-	client := &Client{Binary: "docker"}
+	client := &Client{Binary: "podman"}
 
-	exitCode, err := client.BuildContainer("test", "test", "/nonexistent/Dockerfile")
+	exitCode, err := client.BuildContainer("test", "test", "/nonexistent/Containerfile")
 	if err == nil {
 		t.Error("BuildContainer() expected error, got nil")
 	}
@@ -326,9 +298,9 @@ func TestBuildContainer_FileNotFound(t *testing.T) {
 }
 
 func TestBuildContainer_ContainerfileDoesNotExist(t *testing.T) {
-	client := &Client{Binary: "docker"}
+	client := &Client{Binary: "podman"}
 
-	exitCode, err := client.BuildContainer("test", "test", "/path/that/does/not/exist/Dockerfile")
+	exitCode, err := client.BuildContainer("test", "test", "/path/that/does/not/exist/Containerfile")
 	if err == nil {
 		t.Error("BuildContainer() expected error for non-existent file, got nil")
 	}
@@ -340,11 +312,11 @@ func TestBuildContainer_ContainerfileDoesNotExist(t *testing.T) {
 func TestRunContainer_WithOverlayMounts(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	client := &Client{Binary: "docker"}
+	client := &Client{Binary: "podman"}
 
-	dockerPath := filepath.Join(tmpDir, "docker")
-	if err := os.WriteFile(dockerPath, []byte("#!/bin/sh\nexit 0"), 0755); err != nil {
-		t.Fatalf("Failed to create docker stub: %v", err)
+	podmanPath := filepath.Join(tmpDir, "podman")
+	if err := os.WriteFile(podmanPath, []byte("#!/bin/sh\nexit 0"), 0755); err != nil {
+		t.Fatalf("Failed to create podman stub: %v", err)
 	}
 
 	oldPath := os.Getenv("PATH")

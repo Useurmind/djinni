@@ -10,7 +10,7 @@ const (
 type AgentConfig struct {
 	// HarnessCommand is the command to run inside the container (required)
 	HarnessCommand []string `yaml:"harness_command"`
-	// Image is the Docker image to use for the agent (mutually exclusive with Containerfile)
+	// Image is the container image to use for the agent (mutually exclusive with Containerfile)
 	Image string `yaml:"image"`
 	// Containerfile is the path to a local Containerfile to build an image from (mutually exclusive with Image)
 	Containerfile string `yaml:"containerfile"`

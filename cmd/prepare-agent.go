@@ -67,11 +67,11 @@ var prepareAgentCmd = &cobra.Command{
 			}
 
 			for _, wp := range agentCfg.WritablePaths {
-				dockerWp := docker.WritablePath{
+				wpObj := docker.WritablePath{
 					Name:        wp.Name,
 					Destination: wp.Destination,
 				}
-				if err := client.PrepareWritablePaths(repoName, agentName, []docker.WritablePath{dockerWp}, image); err != nil {
+				if err := client.PrepareWritablePaths(repoName, agentName, []docker.WritablePath{wpObj}, image); err != nil {
 					return fmt.Errorf("failed to prepare writable path %s: %w", wp.Name, err)
 				}
 			}
