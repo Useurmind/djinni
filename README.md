@@ -43,11 +43,11 @@ agents:
     mounts:
       # for opencode you must provide all folders including the database folder
       # while agent is running it is chowned to the podman user, later it is chowned back to you
-      - source: /home/jgruen/.config/opencode
+      - source: ~/.config/opencode
         destination: /home/agent/.config/opencode
-      - source: /home/jgruen/.local/state/opencode
+      - source: ~/.local/state/opencode
         destination: /home/agent/.local/state/opencode
-      - source: /home/jgruen/.local/share/opencode
+      - source: ~/.local/share/opencode
         destination: /home/agent/.local/share/opencode
 ```
 
