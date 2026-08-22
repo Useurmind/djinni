@@ -234,7 +234,7 @@ func prepareWorkspace(agentCfg *config.AgentConfig, cwd, agentName, taskName str
 	}
 
 	for _, fc := range agentCfg.FilesToCopy {
-		commands.FilesToCopy = append(commands.FilesToCopy, docker.FilesToCopy{
+		commands.FilesToCopy = append(commands.FilesToCopy, config.FilesToCopy{
 			Source:      fc.Source,
 			Destination: fc.Destination,
 		})
@@ -312,7 +312,7 @@ func setupWorkspace(agentCfg *config.AgentConfig, cwd, repoName, agentName, task
 		}
 
 		commands = &docker.ContainerCommands{
-			FilesToCopy: []docker.FilesToCopy{
+			FilesToCopy: []config.FilesToCopy{
 				{
 					Source:      gitconfigPath,
 					Destination: "/home/agent/.gitconfig",
@@ -339,7 +339,7 @@ func setupWorkspace(agentCfg *config.AgentConfig, cwd, repoName, agentName, task
 	}
 
 	for _, wp := range agentCfg.WritablePaths {
-		commands.WritablePaths = append(commands.WritablePaths, docker.WritablePath{
+		commands.WritablePaths = append(commands.WritablePaths, config.WritablePath{
 			Name:        wp.Name,
 			Destination: wp.Destination,
 		})

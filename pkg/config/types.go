@@ -1,6 +1,10 @@
 package config
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/useurmind/djinni/pkg/utils"
+)
 
 const (
 	DefaultGitWorkspaceBase = "/tmp/djinni"
@@ -75,6 +79,12 @@ type FilesToCopy struct {
 	Source string `yaml:"source"`
 	// Destination is the path inside the container (required)
 	Destination string `yaml:"destination"`
+}
+
+// Name returns a unique name for the file based on its source path
+// This is used to avoid filename conflicts when copying files to a temp mount
+func (f *FilesToCopy) Name() string {
+	return utils.HashSourcePath(f.Source)
 }
 
 // Model represents a model available from a provider

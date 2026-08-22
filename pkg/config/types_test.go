@@ -5,6 +5,36 @@ import (
 	"testing"
 )
 
+func TestFilesToCopy_Name(t *testing.T) {
+	f := FilesToCopy{
+		Source:      "/home/user/.gitconfig",
+		Destination: "/home/agent/.gitconfig",
+	}
+
+	expected := "f690a263187bdaa1"
+	if f.Name() != expected {
+		t.Errorf("Expected Name '%s', got '%s'", expected, f.Name())
+	}
+}
+
+func TestFilesToCopy_Name_Caching(t *testing.T) {
+	f := &FilesToCopy{
+		Source:      "/home/user/.gitconfig",
+		Destination: "/home/agent/.gitconfig",
+	}
+
+	firstCall := f.Name()
+	secondCall := f.Name()
+
+	if firstCall != secondCall {
+		t.Errorf("Name() should be cached, got different results: %s vs %s", firstCall, secondCall)
+	}
+
+	if firstCall != "f690a263187bdaa1" {
+		t.Errorf("Expected Name 'f690a263187bdaa1', got '%s'", firstCall)
+	}
+}
+
 func TestConfig_Validate(t *testing.T) {
 	tests := []struct {
 		name    string

@@ -39,7 +39,7 @@ func (c *Client) RunContainer(image string, cmd []string, name string, mounts []
 	return c.runContainer(image, cmd, name, mounts, commands)
 }
 
-func (c *Client) PrepareWritablePaths(repoName, agentName string, writablePaths []WritablePath, image string) error {
+func (c *Client) PrepareWritablePaths(repoName, agentName string, writablePaths []config.WritablePath, image string) error {
 	for _, wp := range writablePaths {
 		if err := CreateOverlayStructure(repoName, agentName, wp.Name); err != nil {
 			return fmt.Errorf("failed to create overlay structure for %s: %w", wp.Name, err)

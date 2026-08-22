@@ -1,5 +1,7 @@
 package docker
 
+import "github.com/useurmind/djinni/pkg/config"
+
 type TmpfsMount struct {
 	Destination string
 	Size        string
@@ -8,9 +10,9 @@ type TmpfsMount struct {
 type ContainerCommands struct {
 	PreCommands          []string
 	PostCommands         []string
-	FilesToCopy          []FilesToCopy
+	FilesToCopy          []config.FilesToCopy
 	ForceReadOnlyRootOff bool
 	TmpfsMounts          []TmpfsMount
-	WritablePaths        []WritablePath
+	WritablePaths        []config.WritablePath
 	TempMount            *TempMount
 }
