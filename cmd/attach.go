@@ -5,7 +5,7 @@ import (
 	"os/exec"
 
 	"github.com/spf13/cobra"
-	"github.com/useurmind/djinni/pkg/docker"
+	container "github.com/useurmind/djinni/pkg/container"
 )
 
 var attachCmd = &cobra.Command{
@@ -29,7 +29,7 @@ func runAttachAgent(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client, err := docker.NewClient()
+	client, err := container.NewClient()
 	if err != nil {
 		return fmt.Errorf("failed to initialize container client: %w", err)
 	}

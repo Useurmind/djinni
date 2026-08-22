@@ -1,4 +1,4 @@
-package docker
+package container
 
 import "github.com/useurmind/djinni/pkg/config"
 

@@ -1,10 +1,11 @@
-package docker
+package container
 
 import (
 	"fmt"
-	"github.com/useurmind/djinni/pkg/log"
 	"os"
 	"os/exec"
+
+	"github.com/useurmind/djinni/pkg/log"
 )
 
 func MountOverlay(repoName, agentName, writablePathName, taskName, tempMount string) error {

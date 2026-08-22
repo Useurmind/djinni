@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/useurmind/djinni/pkg/config"
-	"github.com/useurmind/djinni/pkg/docker"
+	container "github.com/useurmind/djinni/pkg/container"
 	"github.com/useurmind/djinni/pkg/git"
 	"github.com/useurmind/djinni/pkg/log"
 )
@@ -40,7 +40,7 @@ var prepareCmd = &cobra.Command{
 			return fmt.Errorf("failed to get repo name: %w", err)
 		}
 
-		client, err := docker.NewClient()
+		client, err := container.NewClient()
 		if err != nil {
 			return fmt.Errorf("failed to initialize container client: %w", err)
 		}
@@ -61,7 +61,7 @@ var prepareCmd = &cobra.Command{
 		if len(agentCfg.WritablePaths) > 0 {
 			log.Info("Setting up writable paths with overlayfs...")
 
-			image := fmt.Sprintf(docker.AgentImageNameFormat, repoName, agentName)
+			image := fmt.Sprintf(container.AgentImageNameFormat, repoName, agentName)
 			if agentCfg.Image != "" {
 				image = agentCfg.Image
 			}

@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/useurmind/djinni/pkg/ai"
 	"github.com/useurmind/djinni/pkg/config"
-	"github.com/useurmind/djinni/pkg/docker"
+	"github.com/useurmind/djinni/pkg/container"
 	"github.com/useurmind/djinni/pkg/git"
 	"github.com/useurmind/djinni/pkg/log"
 )
@@ -130,13 +130,13 @@ func runStartAgent(cmd *cobra.Command, args []string) error {
 	defer func() {
 		for i := 0; i < successCount; i++ {
 			mp := overlayMounts[i]
-			if err := docker.UnmountOverlay(mp.mountPath); err != nil {
+			if err := container.UnmountOverlay(mp.mountPath); err != nil {
 				log.Error(fmt.Sprintf("Failed to unmount overlay at %s: %v", mp.mountPath, err))
 				continue
 			}
 
 			if deleteOnExit == "all" {
-				if err = docker.CleanupOverlay(repoName, agentName, mp.wpName, taskName); err != nil {
+				if err = container.CleanupOverlay(repoName, agentName, mp.wpName, taskName); err != nil {
 					log.Error(fmt.Sprintf("Failed to cleanup overlay at %s: %v", mp.mountPath, err))
 				}
 			}
@@ -158,7 +158,7 @@ func runStartAgent(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to setup overlay mount for %s: %w", wp.Name, err)
 		}
 
-		if err := docker.MountOverlayFsWithMountPoint(repoName, agentName, wp.Name, taskName, tempMountPath); err != nil {
+		if err := container.MountOverlayFsWithMountPoint(repoName, agentName, wp.Name, taskName, tempMountPath); err != nil {
 			return fmt.Errorf("failed to mount overlay for %s: %w", wp.Name, err)
 		}
 
@@ -194,7 +194,7 @@ func runStartAgent(cmd *cobra.Command, args []string) error {
 	}
 
 	if taskName != "" && commands.TempMount != nil {
-		if err := docker.CleanupCopyMounts(repoName, agentName, taskName); err != nil {
+		if err := container.CleanupCopyMounts(repoName, agentName, taskName); err != nil {
 			log.Error(fmt.Sprintf("Failed to cleanup copy mount: %v", err))
 		}
 	}
@@ -216,9 +216,9 @@ func runStartAgent(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func prepareWorkspace(agentCfg *config.AgentConfig, cwd, agentName, taskName string) (*docker.Client, string, *docker.ContainerCommands, string, error) {
+func prepareWorkspace(agentCfg *config.AgentConfig, cwd, agentName, taskName string) (*container.Client, string, *container.ContainerCommands, string, error) {
 	log.Info("Initializing container client...")
-	client, err := docker.NewClient()
+	client, err := container.NewClient()
 	if err != nil {
 		return nil, "", nil, "", fmt.Errorf("failed to initialize container client: %w", err)
 	}
@@ -240,12 +240,12 @@ func prepareWorkspace(agentCfg *config.AgentConfig, cwd, agentName, taskName str
 		})
 	}
 
-	tempMountDir := docker.GetCopyMountDir(repoName, agentName, taskName)
+	tempMountDir := container.GetCopyMountDir(repoName, agentName, taskName)
 	log.Info("Setting up temp mount for files to copy in %s...", tempMountDir)
 	if err := os.MkdirAll(tempMountDir, 0755); err != nil {
 		return nil, "", nil, "", fmt.Errorf("failed to create temp mount directory %s: %w", tempMountDir, err)
 	}
-	commands.TempMount = &docker.TempMount{
+	commands.TempMount = &container.TempMount{
 		Source:      tempMountDir,
 		Destination: "/copyMount",
 	}
@@ -269,14 +269,14 @@ func prepareWorkspace(agentCfg *config.AgentConfig, cwd, agentName, taskName str
 	return client, image, commands, workspacePath, nil
 }
 
-func setupWorkspace(agentCfg *config.AgentConfig, cwd, repoName, agentName, taskName string) (string, *docker.ContainerCommands, string, error) {
+func setupWorkspace(agentCfg *config.AgentConfig, cwd, repoName, agentName, taskName string) (string, *container.ContainerCommands, string, error) {
 	var image string
-	var commands *docker.ContainerCommands
+	var commands *container.ContainerCommands
 	var workspacePath string
 
 	image = agentCfg.Image
 	if agentCfg.Containerfile != "" {
-		image = fmt.Sprintf(docker.AgentImageNameFormat, repoName, agentName)
+		image = fmt.Sprintf(container.AgentImageNameFormat, repoName, agentName)
 		log.Info(fmt.Sprintf("Using local image: %s", image))
 	}
 
@@ -311,7 +311,7 @@ func setupWorkspace(agentCfg *config.AgentConfig, cwd, repoName, agentName, task
 			return "", nil, "", fmt.Errorf("gitconfig path %s is a directory, expected a file", gitconfigPath)
 		}
 
-		commands = &docker.ContainerCommands{
+		commands = &container.ContainerCommands{
 			FilesToCopy: []config.FilesToCopy{
 				{
 					Source:      gitconfigPath,
@@ -326,13 +326,13 @@ func setupWorkspace(agentCfg *config.AgentConfig, cwd, repoName, agentName, task
 	}
 
 	if commands == nil {
-		commands = &docker.ContainerCommands{}
+		commands = &container.ContainerCommands{}
 	}
 
 	commands.ForceReadOnlyRootOff = agentCfg.ForceReadOnlyRootOff
 
 	for _, tmpfs := range agentCfg.TmpfsMounts {
-		commands.TmpfsMounts = append(commands.TmpfsMounts, docker.TmpfsMount{
+		commands.TmpfsMounts = append(commands.TmpfsMounts, container.TmpfsMount{
 			Destination: tmpfs.Destination,
 			Size:        tmpfs.Size,
 		})

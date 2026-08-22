@@ -1,4 +1,4 @@
-package docker
+package container
 
 type TempMount struct {
 	Source      string
