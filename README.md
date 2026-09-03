@@ -35,7 +35,7 @@ Create `.djinni.yml` in your project root:
 default_model: qwen-qwen3-coder-next-fp8
 
 agents:
-  local-agent:
+  default:
     harness_command:
       - opencode
     containerfile: ./Containerfile
@@ -49,6 +49,12 @@ agents:
         destination: /home/agent/.local/state/opencode
       - source: ~/.local/share/opencode
         destination: /home/agent/.local/share/opencode
+    tmpfsMounts:
+      - destination: /cache
+        size: "512m"
+    writablePaths:
+      - name: home
+        destination: /home/agent
 ```
 
 ### Global Configuration
