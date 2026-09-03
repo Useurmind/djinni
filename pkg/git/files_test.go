@@ -98,11 +98,3 @@ exit 128
 		})
 	}
 }
-
-func TestGetChangedFilesWithDiffs_Name(t *testing.T) {
-	result, err := GetChangedFilesWithDiffs("/tmp")
-	if err != nil {
-		t.Logf("Expected error for non-git directory: %v", err)
-	}
-	t.Logf("Result for /tmp (no git repo): %s", result)
-}

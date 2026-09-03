@@ -15,7 +15,7 @@ func TestAgent_ExecutePrompt(t *testing.T) {
 	authCfg, err := config.LoadGlobalConfig()
 	require.NoError(t, err)
 
-	modelProvider, model, err := config.FindModelGlobal(authCfg, "qwen-qwen3-coder-next-fp8", "")
+	modelProvider, model, err := config.FindModelGlobal(authCfg, "qwen3-coder-next-fp8", "")
 	require.NoError(t, err)
 
 	tests := []struct {
