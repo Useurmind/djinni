@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -43,6 +44,9 @@ func ResolveStorageBaseDirectory(cfg *Config, globalCfg *GlobalConfig) {
 	for agentName, agent := range cfg.Agents {
 		if agent.GitWorkspace.BaseDirectory == "" {
 			agent.GitWorkspace.BaseDirectory = globalCfg.StorageBaseDirectory
+		}
+		if agent.GitWorkspace.PatchDirectory == "" {
+			agent.GitWorkspace.PatchDirectory = filepath.Join(agent.GitWorkspace.BaseDirectory, "patches")
 		}
 		cfg.Agents[agentName] = agent
 	}

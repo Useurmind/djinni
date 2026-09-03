@@ -2,7 +2,7 @@ Currently we do asynchronous copy via podman exec and podman cp to copy files in
 This leads to strange locking in wsl.
 
 To alleviate the problem we want to change the copy process.
-- create a tmp dir /tmp/djinni/<repo>/<agent>/copyMounts/<task> to copy the files to that we need
+- create a tmp dir at `{baseDir}/<repo>/<agent>/copyMounts/<task>` to copy the files to that we need
 - bind mount the tmp dir readonly
 - copy the files inside the container in the entrypoint from the bind mounted tmp dir to the destination
 

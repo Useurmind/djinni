@@ -20,7 +20,7 @@ That enables us to only once create the lowerdir, which might be costly and reus
 
 The folder structure should be like this
 
-- /tmp/djinni/<repoName>/<agentName>/writablePaths/<writablePathName>
+- `<baseDir>`/`<repoName>`/`<agentName>`/writablePaths/`<writablePathName>`
   | - /lower
   | - /upper/<taskName>
   | - /work/<taskName>

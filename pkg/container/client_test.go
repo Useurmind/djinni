@@ -325,7 +325,7 @@ func TestRunContainer_WithOverlayMounts(t *testing.T) {
 
 	mounts := []config.Mount{
 		{
-			Source:      "/tmp/djinni/test-repo/test-agent/writablePaths/home/mnt",
+			Source:      "/var/tmp/djinni/test-repo/test-agent/writablePaths/home/mnt",
 			Destination: "/home/agent",
 			ReadOnly:    false,
 		},

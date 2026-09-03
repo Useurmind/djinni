@@ -90,7 +90,7 @@ agents:
 - **Lower directory** — Read-only content from container image (populated at startup)
 - **Upper directory** — Write layer (task-specific, isolated per execution)
 - **Work directory** — Overlayfs working files
-- Mount path: `/tmp/djinni/repo/agent/writablePaths/{name}/mnt`
+- Mount path: `{baseDir}/repo/agent/writablePaths/{name}/mnt`
 
 **Benefits:**
 - Write operations isolated to upper directory
@@ -99,7 +99,7 @@ agents:
 - Cleanup on task completion (see `pkg/docker/overlay.go:120-144`)
 
 **Implementation details:**
-- Overlay structure created at `/tmp/djinni/{repo}/{agent}/writablePaths/{name}/`
+- Overlay structure created at `{baseDir}/{repo}/{agent}/writablePaths/{name}/`
 - Lower directory populated by copying from container image (see `pkg/docker/overlay.go:60-118`)
 - Uses `podman unshare` for namespace-aware file operations
 - Temporary container created to extract image content (see `TempContainerName` constant)
@@ -115,7 +115,7 @@ files_to_copy:
 ```
 
 **Process:**
-1. Temp mount created at `/tmp/djinni/{repo}/{agent}/copyMounts/{task}/`
+1. Temp mount created at `{baseDir}/{repo}/{agent}/copyMounts/{task}/`
 2. Source files copied to temp mount
 3. Container entrypoint copies files to destinations (see `pkg/docker/client.go:167-175`)
 4. Temp mount cleaned up after execution
@@ -136,11 +136,11 @@ agents:
     harness_command: [python, -m, agent.harness]
     containerfile: ./Containerfile
     git_workspace:
-      base_directory: /tmp/git-agent
+      base_directory: /var/tmp/git-agent
 ```
 
 **Details:**
-- Default: `/tmp/djinni` (see `pkg/config/types.go:6`)
+- Default: `/var/tmp/djinni` (configurable via `base_directory` in agent config)
 - Configurable per-agent via `base_directory`
 - Isolated from host filesystem
 - Typically mounted as tmpfs or overlay path

@@ -450,7 +450,7 @@ func commitAndPushFromAgent(agentCfg *config.AgentConfig, branchName, workspaceP
 }
 
 func syncWithPatch(agentCfg *config.AgentConfig, branchName, workspacePath, cwd string, autodelete bool) error {
-	patchDir := "/tmp/djinni/patches"
+	patchDir := agentCfg.GitWorkspace.PatchDirectory
 	err := os.RemoveAll(patchDir)
 	if err != nil {
 		log.Error(fmt.Sprintf("Failed to remove patch directory: %v", err))

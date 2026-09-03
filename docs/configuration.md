@@ -124,12 +124,14 @@ Configure the git workspace directory inside the container. Used when the agent 
 
 **GitWorkspaceMount Fields:**
 
-- `base_directory` (string, optional): Base directory for git operations (default: `/tmp/djinni`)
+- `base_directory` (string, optional): Base directory for git operations (default: `/var/tmp/djinni`)
+- `patch_directory` (string, optional): Directory for storing git patches (default: `baseDir/patches`)
 
 **Example:**
 ```yaml
 git_workspace:
-  base_directory: /tmp/git-agent
+  base_directory: /var/tmp/djinni
+  patch_directory: /var/tmp/djinni/patches
 ```
 
 #### `sync_approach` (string, optional)
@@ -274,7 +276,7 @@ agents:
     sync_approach: automerge
     autodelete_agent_branch: true
     git_workspace:
-      base_directory: /tmp/opencode-workspace
+      base_directory: /var/tmp/opencode-workspace
     forceReadOnlyRootOff: false
     tmpfsMounts:
       - destination: /tmp

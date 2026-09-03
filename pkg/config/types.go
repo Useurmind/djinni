@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/useurmind/djinni/pkg/utils"
 )
@@ -53,8 +54,10 @@ type Mount struct {
 
 // GitWorkspaceMount configures the git workspace directory inside the container
 type GitWorkspaceMount struct {
-	// BaseDirectory is the base directory for git operations (default: /tmp/djinni)
+	// BaseDirectory is the base directory for git operations (default: /var/tmp/djinni)
 	BaseDirectory string `yaml:"base_directory"`
+	// PatchDirectory is the directory for storing git patches (default: baseDir/patches)
+	PatchDirectory string `yaml:"patch_directory"`
 }
 
 // TmpfsMount configures a tmpfs mount for the container
@@ -140,6 +143,9 @@ func (c *Config) Validate() error {
 		}
 		if agent.GitWorkspace.BaseDirectory == "" {
 			agent.GitWorkspace.BaseDirectory = DefaultGitWorkspaceBase
+		}
+		if agent.GitWorkspace.PatchDirectory == "" {
+			agent.GitWorkspace.PatchDirectory = filepath.Join(agent.GitWorkspace.BaseDirectory, "patches")
 		}
 		if agent.SyncApproach != "" && agent.SyncApproach != "none" && agent.SyncApproach != "gitpatch" && agent.SyncApproach != "automerge" {
 			return fmt.Errorf("agent '%s': sync_approach must be 'none', 'gitpatch', or 'automerge'", name)
