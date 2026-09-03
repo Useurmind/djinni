@@ -15,6 +15,8 @@ RUN curl -fsSL https://go.dev/dl/go1.26.6.linux-amd64.tar.gz | tar -C /usr/local
 ENV PATH="/usr/local/go/bin:${PATH}"
 
 RUN useradd -m -s /bin/bash agent
+RUN chown agent:agent -R /home/agent/
+
 
 USER agent
 
@@ -26,7 +28,7 @@ RUN go install golang.org/x/tools/cmd/deadcode@latest
 RUN go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
 RUN go install golang.org/x/tools/gopls@latest
 
-RUN rm -rf /home/agent/go/pkg/
+RUN go clean -cache -modcache
 
 RUN curl -fsSL https://opencode.ai/install | bash
 

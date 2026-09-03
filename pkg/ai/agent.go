@@ -33,6 +33,8 @@ Format requirements:
 3. Detailed description of the changes
 4. Use bullet points for multiple changes if needed
 
+Only plain text no markdown or code blocks
+
 Changes to analyze:
 ` + gitOutput + `
 

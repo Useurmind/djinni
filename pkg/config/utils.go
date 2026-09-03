@@ -38,3 +38,12 @@ func ExpandConfigPaths(cfg *Config) {
 		cfg.Agents[agentName] = agent
 	}
 }
+
+func ResolveStorageBaseDirectory(cfg *Config, globalCfg *GlobalConfig) {
+	for agentName, agent := range cfg.Agents {
+		if agent.GitWorkspace.BaseDirectory == "" {
+			agent.GitWorkspace.BaseDirectory = globalCfg.StorageBaseDirectory
+		}
+		cfg.Agents[agentName] = agent
+	}
+}

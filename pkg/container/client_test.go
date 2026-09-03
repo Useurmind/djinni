@@ -53,7 +53,7 @@ func TestNewClient(t *testing.T) {
 				}
 			}
 
-			client, err := NewClient()
+			client, err := NewClient("")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewClient() error = %v, wantErr %v", err, tt.wantErr)
 				return

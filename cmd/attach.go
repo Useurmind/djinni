@@ -29,7 +29,7 @@ func runAttachAgent(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client, err := container.NewClient()
+	client, err := container.NewClient("")
 	if err != nil {
 		return fmt.Errorf("failed to initialize container client: %w", err)
 	}

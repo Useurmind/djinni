@@ -8,10 +8,10 @@ import (
 	"github.com/useurmind/djinni/pkg/log"
 )
 
-func MountOverlay(repoName, agentName, writablePathName, taskName, tempMount string) error {
-	lowerDir := GetLowerDir(repoName, agentName, writablePathName)
-	upperDir := GetUpperDir(repoName, agentName, writablePathName, taskName)
-	workDir := GetWorkDir(repoName, agentName, writablePathName, taskName)
+func MountOverlay(baseDir, repoName, agentName, writablePathName, taskName, tempMount string) error {
+	lowerDir := GetLowerDir(baseDir, repoName, agentName, writablePathName)
+	upperDir := GetUpperDir(baseDir, repoName, agentName, writablePathName, taskName)
+	workDir := GetWorkDir(baseDir, repoName, agentName, writablePathName, taskName)
 
 	if err := os.MkdirAll(upperDir, 0755); err != nil {
 		return fmt.Errorf("failed to create upper directory %s: %w", upperDir, err)
@@ -50,9 +50,9 @@ func UnmountOverlay(mountPath string) error {
 	return nil
 }
 
-func MountOverlayFsWithMountPoint(repoName, agentName, writablePathName, taskName, mountPoint string) error {
-	upperDir := GetUpperDir(repoName, agentName, writablePathName, taskName)
-	workDir := GetWorkDir(repoName, agentName, writablePathName, taskName)
+func MountOverlayFsWithMountPoint(baseDir, repoName, agentName, writablePathName, taskName, mountPoint string) error {
+	upperDir := GetUpperDir(baseDir, repoName, agentName, writablePathName, taskName)
+	workDir := GetWorkDir(baseDir, repoName, agentName, writablePathName, taskName)
 
 	if err := os.MkdirAll(upperDir, 0755); err != nil {
 		return fmt.Errorf("failed to create upper directory %s: %w", upperDir, err)
@@ -62,5 +62,5 @@ func MountOverlayFsWithMountPoint(repoName, agentName, writablePathName, taskNam
 		return fmt.Errorf("failed to create work directory %s: %w", workDir, err)
 	}
 
-	return MountOverlay(repoName, agentName, writablePathName, taskName, mountPoint)
+	return MountOverlay(baseDir, repoName, agentName, writablePathName, taskName, mountPoint)
 }

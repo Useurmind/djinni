@@ -14,11 +14,15 @@ import (
 const AgentImageNameFormat = "%s-%s:latest"
 
 type Client struct {
-	Type   string
-	Binary string
+	Type    string
+	Binary  string
+	BaseDir string
 }
 
-func NewClient() (*Client, error) {
+func NewClient(baseDir string) (*Client, error) {
+	if baseDir == "" {
+		baseDir = DefaultBaseDir
+	}
 	binary := "podman"
 	_, err := exec.LookPath(binary)
 	if err != nil {
@@ -26,8 +30,9 @@ func NewClient() (*Client, error) {
 	}
 	log.Info(fmt.Sprintf("Detected container runtime: %s", binary))
 	return &Client{
-		Type:   binary,
-		Binary: binary,
+		Type:    binary,
+		Binary:  binary,
+		BaseDir: baseDir,
 	}, nil
 }
 
@@ -41,11 +46,11 @@ func (c *Client) RunContainer(image string, cmd []string, name string, mounts []
 
 func (c *Client) PrepareWritablePaths(repoName, agentName string, writablePaths []config.WritablePath, image string) error {
 	for _, wp := range writablePaths {
-		if err := CreateOverlayStructure(repoName, agentName, wp.Name); err != nil {
+		if err := CreateOverlayStructure(c.BaseDir, repoName, agentName, wp.Name); err != nil {
 			return fmt.Errorf("failed to create overlay structure for %s: %w", wp.Name, err)
 		}
 
-		lowerDir := GetLowerDir(repoName, agentName, wp.Name)
+		lowerDir := GetLowerDir(c.BaseDir, repoName, agentName, wp.Name)
 		if err := CopyImageFolderToLower(c, image, wp.Destination, lowerDir); err != nil {
 			return fmt.Errorf("failed to copy image folder to lower for %s: %w", wp.Name, err)
 		}
@@ -55,8 +60,8 @@ func (c *Client) PrepareWritablePaths(repoName, agentName string, writablePaths 
 }
 
 func (c *Client) SetupOverlayMount(repoName, agentName, taskName, writablePathName, destination string) (string, error) {
-	upperDir := GetUpperDir(repoName, agentName, writablePathName, taskName)
-	workDir := GetWorkDir(repoName, agentName, writablePathName, taskName)
+	upperDir := GetUpperDir(c.BaseDir, repoName, agentName, writablePathName, taskName)
+	workDir := GetWorkDir(c.BaseDir, repoName, agentName, writablePathName, taskName)
 
 	if err := os.MkdirAll(upperDir, 0755); err != nil {
 		return "", fmt.Errorf("failed to create upper directory %s: %w", upperDir, err)

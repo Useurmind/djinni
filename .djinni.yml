@@ -1,4 +1,4 @@
-default_model: qwen-qwen3-coder-next-fp8
+default_model: qwen3-coder-next-fp8
 agents:
   local-agent:
     harness_command:

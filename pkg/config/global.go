@@ -55,5 +55,8 @@ func (c *GlobalConfig) Validate() error {
 			return err
 		}
 	}
+	if c.StorageBaseDirectory == "" {
+		c.StorageBaseDirectory = DefaultGitWorkspaceBase
+	}
 	return nil
 }

@@ -12,7 +12,7 @@ import (
 
 const TempContainerName = "djinni-temp-copy"
 
-const DefaultBaseDir = "/tmp/djinni"
+const DefaultBaseDir = "/var/tmp/djinni"
 
 const (
 	WritablePathsSubdir = "writablePaths"
@@ -22,38 +22,38 @@ const (
 	CopyMountsSubdir    = "copyMounts"
 )
 
-func GetWritablePathDir(repoName, agentName, writablePathName string) string {
-	return filepath.Join(DefaultBaseDir, repoName, agentName, WritablePathsSubdir, writablePathName)
+func GetWritablePathDir(baseDir, repoName, agentName, writablePathName string) string {
+	return filepath.Join(baseDir, repoName, agentName, WritablePathsSubdir, writablePathName)
 }
 
-func GetLowerDir(repoName, agentName, writablePathName string) string {
-	return filepath.Join(GetWritablePathDir(repoName, agentName, writablePathName), LowerSubdir)
+func GetLowerDir(baseDir, repoName, agentName, writablePathName string) string {
+	return filepath.Join(GetWritablePathDir(baseDir, repoName, agentName, writablePathName), LowerSubdir)
 }
 
-func GetUpperDir(repoName, agentName, writablePathName, taskName string) string {
-	return filepath.Join(GetWritablePathDir(repoName, agentName, writablePathName), UpperSubdir, taskName)
+func GetUpperDir(baseDir, repoName, agentName, writablePathName, taskName string) string {
+	return filepath.Join(GetWritablePathDir(baseDir, repoName, agentName, writablePathName), UpperSubdir, taskName)
 }
 
-func GetWorkDir(repoName, agentName, writablePathName, taskName string) string {
-	return filepath.Join(GetWritablePathDir(repoName, agentName, writablePathName), WorkSubdir, taskName)
+func GetWorkDir(baseDir, repoName, agentName, writablePathName, taskName string) string {
+	return filepath.Join(GetWritablePathDir(baseDir, repoName, agentName, writablePathName), WorkSubdir, taskName)
 }
 
-func GetCopyMountDir(repoName, agentName, taskName string) string {
-	return filepath.Join(DefaultBaseDir, repoName, agentName, CopyMountsSubdir, taskName)
+func GetCopyMountDir(baseDir, repoName, agentName, taskName string) string {
+	return filepath.Join(baseDir, repoName, agentName, CopyMountsSubdir, taskName)
 }
 
-func CreateOverlayStructure(repoName, agentName, writablePathName string) error {
-	baseDir := GetWritablePathDir(repoName, agentName, writablePathName)
-	lowerDir := GetLowerDir(repoName, agentName, writablePathName)
+func CreateOverlayStructure(baseDir, repoName, agentName, writablePathName string) error {
+	baseDirPath := GetWritablePathDir(baseDir, repoName, agentName, writablePathName)
+	lowerDir := GetLowerDir(baseDir, repoName, agentName, writablePathName)
 
-	paths := []string{baseDir, lowerDir}
+	paths := []string{baseDirPath, lowerDir}
 	for _, path := range paths {
 		if err := os.MkdirAll(path, 0755); err != nil {
 			return fmt.Errorf("failed to create directory %s: %w", path, err)
 		}
 	}
 
-	log.Info(fmt.Sprintf("Created overlayfs structure for %s: %s", writablePathName, baseDir))
+	log.Info(fmt.Sprintf("Created overlayfs structure for %s: %s", writablePathName, baseDirPath))
 	return nil
 }
 
@@ -117,9 +117,9 @@ func CopyImageFolderToLower(client *Client, image, imageSourcePath, lowerDir str
 	return nil
 }
 
-func CleanupOverlay(repoName, agentName, writablePathName, taskName string) error {
-	upperDir := GetUpperDir(repoName, agentName, writablePathName, taskName)
-	workDir := GetWorkDir(repoName, agentName, writablePathName, taskName)
+func CleanupOverlay(baseDir, repoName, agentName, writablePathName, taskName string) error {
+	upperDir := GetUpperDir(baseDir, repoName, agentName, writablePathName, taskName)
+	workDir := GetWorkDir(baseDir, repoName, agentName, writablePathName, taskName)
 	tempMount := filepath.Join(workDir, "mnt")
 
 	for _, dir := range []string{upperDir, workDir, tempMount} {
@@ -133,8 +133,8 @@ func CleanupOverlay(repoName, agentName, writablePathName, taskName string) erro
 	return nil
 }
 
-func CleanupCopyMounts(repoName, agentName, taskName string) error {
-	tempMountDir := GetCopyMountDir(repoName, agentName, taskName)
+func CleanupCopyMounts(baseDir, repoName, agentName, taskName string) error {
+	tempMountDir := GetCopyMountDir(baseDir, repoName, agentName, taskName)
 
 	if err := exec.Command("podman", "unshare", "rm", "-rf", tempMountDir).Run(); err != nil {
 		return fmt.Errorf("failed to cleanup copy mount %s: %w", tempMountDir, err)

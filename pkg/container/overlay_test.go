@@ -10,55 +10,60 @@ import (
 )
 
 func TestGetWritablePathDir(t *testing.T) {
+	baseDir := DefaultBaseDir
 	repoName := "test-repo"
 	agentName := "test-agent"
 	writablePathName := "home"
 
-	expected := "/tmp/djinni/test-repo/test-agent/writablePaths/home"
-	result := GetWritablePathDir(repoName, agentName, writablePathName)
+	expected := "/var/tmp/djinni/test-repo/test-agent/writablePaths/home"
+	result := GetWritablePathDir(baseDir, repoName, agentName, writablePathName)
 	assert.Equal(t, expected, result)
 }
 
 func TestGetLowerDir(t *testing.T) {
+	baseDir := DefaultBaseDir
 	repoName := "test-repo"
 	agentName := "test-agent"
 	writablePathName := "home"
 
-	expected := "/tmp/djinni/test-repo/test-agent/writablePaths/home/lower"
-	result := GetLowerDir(repoName, agentName, writablePathName)
+	expected := "/var/tmp/djinni/test-repo/test-agent/writablePaths/home/lower"
+	result := GetLowerDir(baseDir, repoName, agentName, writablePathName)
 	assert.Equal(t, expected, result)
 }
 
 func TestGetUpperDir(t *testing.T) {
+	baseDir := DefaultBaseDir
 	repoName := "test-repo"
 	agentName := "test-agent"
 	writablePathName := "home"
 	taskName := "task123"
 
-	expected := "/tmp/djinni/test-repo/test-agent/writablePaths/home/upper/task123"
-	result := GetUpperDir(repoName, agentName, writablePathName, taskName)
+	expected := "/var/tmp/djinni/test-repo/test-agent/writablePaths/home/upper/task123"
+	result := GetUpperDir(baseDir, repoName, agentName, writablePathName, taskName)
 	assert.Equal(t, expected, result)
 }
 
 func TestGetWorkDir(t *testing.T) {
+	baseDir := DefaultBaseDir
 	repoName := "test-repo"
 	agentName := "test-agent"
 	writablePathName := "home"
 	taskName := "task123"
 
-	expected := "/tmp/djinni/test-repo/test-agent/writablePaths/home/work/task123"
-	result := GetWorkDir(repoName, agentName, writablePathName, taskName)
+	expected := "/var/tmp/djinni/test-repo/test-agent/writablePaths/home/work/task123"
+	result := GetWorkDir(baseDir, repoName, agentName, writablePathName, taskName)
 	assert.Equal(t, expected, result)
 }
 
 func TestCreateOverlayStructure(t *testing.T) {
+	baseDir := DefaultBaseDir
 	repoName := "test-repo"
 	agentName := "test-agent"
 	writablePathName := "home"
 
-	lowerDir := GetLowerDir(repoName, agentName, writablePathName)
+	lowerDir := GetLowerDir(baseDir, repoName, agentName, writablePathName)
 
-	err := CreateOverlayStructure(repoName, agentName, writablePathName)
+	err := CreateOverlayStructure(baseDir, repoName, agentName, writablePathName)
 	require.NoError(t, err)
 
 	defer os.RemoveAll(DefaultBaseDir + "-test")
@@ -67,7 +72,8 @@ func TestCreateOverlayStructure(t *testing.T) {
 }
 
 func TestCleanupOverlay(t *testing.T) {
-	_, err := NewClient()
+	baseDir := DefaultBaseDir
+	_, err := NewClient("")
 	if err != nil {
 		t.Skipf("Skipping test: no container runtime available: %v", err)
 	}
@@ -77,15 +83,15 @@ func TestCleanupOverlay(t *testing.T) {
 	writablePathName := "home"
 	taskName := "task123"
 
-	upperDir := GetUpperDir(repoName, agentName, writablePathName, taskName)
-	workDir := GetWorkDir(repoName, agentName, writablePathName, taskName)
+	upperDir := GetUpperDir(baseDir, repoName, agentName, writablePathName, taskName)
+	workDir := GetWorkDir(baseDir, repoName, agentName, writablePathName, taskName)
 
 	err = os.MkdirAll(upperDir, 0755)
 	require.NoError(t, err)
 	err = os.MkdirAll(workDir, 0755)
 	require.NoError(t, err)
 
-	err = CleanupOverlay(repoName, agentName, writablePathName, taskName)
+	err = CleanupOverlay(baseDir, repoName, agentName, writablePathName, taskName)
 	require.NoError(t, err)
 
 	assert.NoDirExists(t, upperDir)
@@ -97,14 +103,14 @@ func TestCopyImageFolderToLower(t *testing.T) {
 	agentName := "test-agent"
 	writablePathName := "home"
 
-	lowerDir := GetLowerDir(repoName, agentName, writablePathName)
+	lowerDir := GetLowerDir(DefaultBaseDir, repoName, agentName, writablePathName)
 
-	err := CreateOverlayStructure(repoName, agentName, writablePathName)
+	err := CreateOverlayStructure(DefaultBaseDir, repoName, agentName, writablePathName)
 	require.NoError(t, err)
 
 	defer os.RemoveAll(DefaultBaseDir + "-test")
 
-	client, err := NewClient()
+	client, err := NewClient("")
 	if err != nil {
 		t.Skipf("Skipping test: no container runtime available: %v", err)
 	}

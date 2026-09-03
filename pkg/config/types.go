@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	DefaultGitWorkspaceBase = "/tmp/djinni"
+	DefaultGitWorkspaceBase = "/var/tmp/djinni"
 )
 
 // AgentConfig defines the configuration for an AI agent
@@ -109,6 +109,8 @@ type ModelProvider struct {
 type GlobalConfig struct {
 	// ModelProviders is the list of configured model providers
 	ModelProviders []ModelProvider `yaml:"modelProviders"`
+	// StorageBaseDirectory is the base directory for storing temporary files and workspace (default: /var/tmp/djinni)
+	StorageBaseDirectory string `yaml:"storageBaseDirectory"`
 }
 
 // Config holds the local project configuration

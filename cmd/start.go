@@ -79,6 +79,13 @@ func runStartAgent(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
+	globalCfg, err := config.LoadGlobalConfig()
+	if err != nil {
+		return fmt.Errorf("failed to load global config: %w", err)
+	}
+
+	config.ResolveStorageBaseDirectory(cfg, globalCfg)
+
 	agentCfg, ok := cfg.Agents[agentName]
 	if !ok {
 		return fmt.Errorf("agent '%s' not found in config", agentName)
@@ -106,7 +113,8 @@ func runStartAgent(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client, image, commands, workspacePath, err := prepareWorkspace(agentCfg, cwd, agentName, taskName)
+	baseDir := agentCfg.GitWorkspace.BaseDirectory
+	client, image, commands, workspacePath, err := prepareWorkspace(agentCfg, cwd, agentName, taskName, baseDir)
 	if err != nil {
 		return err
 	}
@@ -136,7 +144,7 @@ func runStartAgent(cmd *cobra.Command, args []string) error {
 			}
 
 			if deleteOnExit == "all" {
-				if err = container.CleanupOverlay(repoName, agentName, mp.wpName, taskName); err != nil {
+				if err = container.CleanupOverlay(baseDir, repoName, agentName, mp.wpName, taskName); err != nil {
 					log.Error(fmt.Sprintf("Failed to cleanup overlay at %s: %v", mp.mountPath, err))
 				}
 			}
@@ -158,7 +166,7 @@ func runStartAgent(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to setup overlay mount for %s: %w", wp.Name, err)
 		}
 
-		if err := container.MountOverlayFsWithMountPoint(repoName, agentName, wp.Name, taskName, tempMountPath); err != nil {
+		if err := container.MountOverlayFsWithMountPoint(baseDir, repoName, agentName, wp.Name, taskName, tempMountPath); err != nil {
 			return fmt.Errorf("failed to mount overlay for %s: %w", wp.Name, err)
 		}
 
@@ -194,7 +202,7 @@ func runStartAgent(cmd *cobra.Command, args []string) error {
 	}
 
 	if taskName != "" && commands.TempMount != nil {
-		if err := container.CleanupCopyMounts(repoName, agentName, taskName); err != nil {
+		if err := container.CleanupCopyMounts(baseDir, repoName, agentName, taskName); err != nil {
 			log.Error(fmt.Sprintf("Failed to cleanup copy mount: %v", err))
 		}
 	}
@@ -216,9 +224,9 @@ func runStartAgent(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func prepareWorkspace(agentCfg *config.AgentConfig, cwd, agentName, taskName string) (*container.Client, string, *container.ContainerCommands, string, error) {
+func prepareWorkspace(agentCfg *config.AgentConfig, cwd, agentName, taskName, baseDir string) (*container.Client, string, *container.ContainerCommands, string, error) {
 	log.Info("Initializing container client...")
-	client, err := container.NewClient()
+	client, err := container.NewClient(baseDir)
 	if err != nil {
 		return nil, "", nil, "", fmt.Errorf("failed to initialize container client: %w", err)
 	}
@@ -240,7 +248,7 @@ func prepareWorkspace(agentCfg *config.AgentConfig, cwd, agentName, taskName str
 		})
 	}
 
-	tempMountDir := container.GetCopyMountDir(repoName, agentName, taskName)
+	tempMountDir := container.GetCopyMountDir(baseDir, repoName, agentName, taskName)
 	log.Info("Setting up temp mount for files to copy in %s...", tempMountDir)
 	if err := os.MkdirAll(tempMountDir, 0755); err != nil {
 		return nil, "", nil, "", fmt.Errorf("failed to create temp mount directory %s: %w", tempMountDir, err)

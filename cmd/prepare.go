@@ -26,6 +26,13 @@ var prepareCmd = &cobra.Command{
 			return fmt.Errorf("failed to load config: %w", err)
 		}
 
+		globalCfg, err := config.LoadGlobalConfig()
+		if err != nil {
+			return fmt.Errorf("failed to load global config: %w", err)
+		}
+
+		config.ResolveStorageBaseDirectory(cfg, globalCfg)
+
 		agentCfg, ok := cfg.Agents[agentName]
 		if !ok {
 			return fmt.Errorf("agent '%s' not found in config", agentName)
@@ -40,7 +47,7 @@ var prepareCmd = &cobra.Command{
 			return fmt.Errorf("failed to get repo name: %w", err)
 		}
 
-		client, err := container.NewClient()
+		client, err := container.NewClient(agentCfg.GitWorkspace.BaseDirectory)
 		if err != nil {
 			return fmt.Errorf("failed to initialize container client: %w", err)
 		}
