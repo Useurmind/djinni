@@ -134,6 +134,7 @@ func runStartAgent(cmd *cobra.Command, args []string) error {
 	successCount := 0
 
 	deleteOnExit := "none"
+	workspaceCleanupNeeded := false
 	// Defer cleanup to run when function exits, regardless of how it exits
 	defer func() {
 		for i := 0; i < successCount; i++ {
@@ -144,13 +145,13 @@ func runStartAgent(cmd *cobra.Command, args []string) error {
 			}
 
 			if deleteOnExit == "all" {
-				if err = container.CleanupOverlay(baseDir, repoName, agentName, mp.wpName, taskName); err != nil {
+				if err := container.CleanupOverlay(baseDir, repoName, agentName, mp.wpName, taskName); err != nil {
 					log.Error(fmt.Sprintf("Failed to cleanup overlay at %s: %v", mp.mountPath, err))
 				}
 			}
 		}
 
-		if workspacePath != "" && deleteOnExit == "all" {
+		if workspaceCleanupNeeded {
 			log.Info("Deleting workspace...")
 			if err := os.RemoveAll(workspacePath); err != nil {
 				log.Error(fmt.Sprintf("Failed to delete workspace %s: %v", workspacePath, err))
@@ -217,8 +218,10 @@ func runStartAgent(cmd *cobra.Command, args []string) error {
 
 	if workspacePath != "" {
 		if err := handlePostExecution(agentCfg, cfg, cwd, taskName, workspacePath); err != nil {
-			return fmt.Errorf("failed to handle post-execution: %v", err)
+			log.Error(fmt.Sprintf("Post-execution failed: %v", err))
+			return fmt.Errorf("failed to handle post-execution: %w", err)
 		}
+		workspaceCleanupNeeded = true
 	}
 
 	return nil
@@ -395,7 +398,23 @@ func handlePostExecution(agentCfg *config.AgentConfig, cfg *config.Config, cwd, 
 	branchName := fmt.Sprintf("feature/%s", taskName)
 	err = commitAndPushFromAgent(agentCfg, branchName, workspacePath, cwd)
 	if err != nil {
-		return fmt.Errorf("failed to commit and push changes: %w", err)
+		log.Error(fmt.Sprintf("Failed to generate commit message: %v", err))
+		log.Info("Falling back to default commit message and skipping automerge")
+		if syncApproach == "automerge" {
+			log.Info("Automerge skipped - only syncing branch to user repo")
+			if err := syncWithBranch(agentCfg, branchName, workspacePath, cwd, false); err != nil {
+				return fmt.Errorf("failed to sync branch: %w", err)
+			}
+			return nil
+		}
+		if syncApproach == "gitpatch" {
+			log.Info("Patch sync skipped - only syncing branch to user repo")
+			if err := syncWithPatch(agentCfg, branchName, workspacePath, cwd, false); err != nil {
+				return fmt.Errorf("failed to sync patch: %w", err)
+			}
+			return nil
+		}
+		return nil
 	}
 
 	switch syncApproach {
@@ -575,12 +594,12 @@ func generateCommitMessage(workingDir, defaultModel string) (string, error) {
 	}
 
 	if len(globalCfg.ModelProviders) == 0 {
-		return "", fmt.Errorf("no model providers configured in global config")
+		return "no ai available for commit message", nil
 	}
 
 	provider, model, err := config.FindModelGlobal(globalCfg, defaultModel, "")
 	if err != nil {
-		return "", fmt.Errorf("failed to find model '%s': %w", defaultModel, err)
+		return "no ai available for commit message", nil
 	}
 
 	aiAgent := &ai.Agent{
@@ -592,7 +611,7 @@ func generateCommitMessage(workingDir, defaultModel string) (string, error) {
 
 	commitMsg, err := aiAgent.Execute()
 	if err != nil {
-		return "", fmt.Errorf("failed to generate commit message: %w", err)
+		return "no ai available for commit message", nil
 	}
 
 	return strings.TrimSpace(commitMsg), nil
