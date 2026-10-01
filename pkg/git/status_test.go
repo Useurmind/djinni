@@ -21,6 +21,15 @@ func TestIsRepositoryClean(t *testing.T) {
 	output, err := gitInitCmd.CombinedOutput()
 	require.NoError(t, err, "git init failed: %s", string(output))
 
+	// Set git config in the repo
+	configCmd := exec.Command("git", "config", "user.name", "Test")
+	configCmd.Dir = sourceDir
+	require.NoError(t, configCmd.Run())
+
+	configCmd = exec.Command("git", "config", "user.email", "test@test.com")
+	configCmd.Dir = sourceDir
+	require.NoError(t, configCmd.Run())
+
 	clean, err := IsRepositoryClean(sourceDir)
 	require.NoError(t, err)
 	assert.True(t, clean)
@@ -31,8 +40,13 @@ func TestIsRepositoryClean(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, clean)
 
-	require.NoError(t, exec.Command("git", "add", ".").Run())
-	require.NoError(t, exec.Command("git", "commit", "-m", "test").Run())
+	addCmd := exec.Command("git", "add", ".")
+	addCmd.Dir = sourceDir
+	require.NoError(t, addCmd.Run())
+
+	commitCmd := exec.Command("git", "commit", "-m", "test")
+	commitCmd.Dir = sourceDir
+	require.NoError(t, commitCmd.Run())
 
 	clean, err = IsRepositoryClean(sourceDir)
 	require.NoError(t, err)
@@ -49,6 +63,15 @@ func TestGetChangedFiles(t *testing.T) {
 	gitInitCmd.Dir = sourceDir
 	output, err := gitInitCmd.CombinedOutput()
 	require.NoError(t, err, "git init failed: %s", string(output))
+
+	// Set git config in the repo
+	configCmd := exec.Command("git", "config", "user.name", "Test")
+	configCmd.Dir = sourceDir
+	require.NoError(t, configCmd.Run())
+
+	configCmd = exec.Command("git", "config", "user.email", "test@test.com")
+	configCmd.Dir = sourceDir
+	require.NoError(t, configCmd.Run())
 
 	files, err := GetChangedFiles(sourceDir)
 	require.NoError(t, err)
@@ -72,9 +95,24 @@ func TestGetDiff(t *testing.T) {
 	output, err := gitInitCmd.CombinedOutput()
 	require.NoError(t, err, "git init failed: %s", string(output))
 
+	// Set git config in the repo
+	configCmd := exec.Command("git", "config", "user.name", "Test")
+	configCmd.Dir = sourceDir
+	require.NoError(t, configCmd.Run())
+
+	configCmd = exec.Command("git", "config", "user.email", "test@test.com")
+	configCmd.Dir = sourceDir
+	require.NoError(t, configCmd.Run())
+
 	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "test.txt"), []byte("test"), 0644))
-	require.NoError(t, exec.Command("git", "add", ".").Run())
-	require.NoError(t, exec.Command("git", "commit", "-m", "initial").Run())
+
+	addCmd := exec.Command("git", "add", ".")
+	addCmd.Dir = sourceDir
+	require.NoError(t, addCmd.Run())
+
+	commitCmd := exec.Command("git", "commit", "-m", "initial")
+	commitCmd.Dir = sourceDir
+	require.NoError(t, commitCmd.Run())
 
 	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "test.txt"), []byte("test modified"), 0644))
 
@@ -117,15 +155,32 @@ func TestGetDiffs(t *testing.T) {
 	output, err := gitInitCmd.CombinedOutput()
 	require.NoError(t, err, "git init failed: %s", string(output))
 
+	// Set git config in the repo
+	configCmd := exec.Command("git", "config", "user.name", "Test")
+	configCmd.Dir = sourceDir
+	require.NoError(t, configCmd.Run())
+
+	configCmd = exec.Command("git", "config", "user.email", "test@test.com")
+	configCmd.Dir = sourceDir
+	require.NoError(t, configCmd.Run())
+
 	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "file1.go"), []byte("package main\n"), 0644))
 	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "file2.md"), []byte("# Test\n"), 0644))
 
-	require.NoError(t, exec.Command("git", "add", ".").Run())
-	require.NoError(t, exec.Command("git", "commit", "-m", "initial").Run())
+	addCmd := exec.Command("git", "add", ".")
+	addCmd.Dir = sourceDir
+	require.NoError(t, addCmd.Run())
+
+	commitCmd := exec.Command("git", "commit", "-m", "initial")
+	commitCmd.Dir = sourceDir
+	require.NoError(t, commitCmd.Run())
 
 	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "file1.go"), []byte("package main\nfunc main() {}\n"), 0644))
 	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "file3.go"), []byte("package main\n"), 0644))
-	require.NoError(t, exec.Command("git", "add", "file3.go").Run())
+
+	addCmd = exec.Command("git", "add", "file3.go")
+	addCmd.Dir = sourceDir
+	require.NoError(t, addCmd.Run())
 
 	diffs, err := GetDiffs(sourceDir)
 	require.NoError(t, err)

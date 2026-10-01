@@ -29,12 +29,32 @@ func TestPushBranch(t *testing.T) {
 	output, err = gitInitCmd.CombinedOutput()
 	require.NoError(t, err, "git init failed: %s", string(output))
 
+	// Set git config in the repo
+	configCmd := exec.Command("git", "config", "user.name", "Test")
+	configCmd.Dir = localDir
+	require.NoError(t, configCmd.Run())
+
+	configCmd = exec.Command("git", "config", "user.email", "test@test.com")
+	configCmd.Dir = localDir
+	require.NoError(t, configCmd.Run())
+
 	require.NoError(t, os.WriteFile(filepath.Join(localDir, "README.md"), []byte("# Test"), 0644))
 
-	require.NoError(t, exec.Command("git", "add", ".").Run())
-	require.NoError(t, exec.Command("git", "commit", "-m", "Initial commit").Run())
-	require.NoError(t, exec.Command("git", "branch", "-M", "main").Run())
-	require.NoError(t, exec.Command("git", "remote", "add", "origin", remoteDir).Run())
+	addCmd := exec.Command("git", "add", ".")
+	addCmd.Dir = localDir
+	require.NoError(t, addCmd.Run())
+
+	commitCmd := exec.Command("git", "commit", "-m", "Initial commit")
+	commitCmd.Dir = localDir
+	require.NoError(t, commitCmd.Run())
+
+	branchCmd := exec.Command("git", "branch", "-M", "main")
+	branchCmd.Dir = localDir
+	require.NoError(t, branchCmd.Run())
+
+	remoteCmd := exec.Command("git", "remote", "add", "origin", remoteDir)
+	remoteCmd.Dir = localDir
+	require.NoError(t, remoteCmd.Run())
 
 	err = PushBranch(localDir, "main")
 	require.NoError(t, err)
