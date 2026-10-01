@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y \
     git \
     curl \
     make \
+    file \
     build-essential \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
@@ -24,12 +25,15 @@ WORKDIR /home/agent
 
 RUN bash -c 'echo "export PATH=$PATH:/home/agent/go/bin" >> /home/agent/.bashrc'
 
+RUN curl -LsSf https://raw.githubusercontent.com/ast2llm/ast2llm-go/main/install.sh | sh
+RUN curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.14.0
+
+RUN go install github.com/fpt/go-dev-mcp/godevmcp@latest
 RUN go install golang.org/x/tools/cmd/deadcode@latest
-RUN go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
 RUN go install golang.org/x/tools/gopls@latest
 
 RUN go clean -cache -modcache
 
-RUN curl -fsSL https://opencode.ai/install | bash
+RUN curl -fsSL https://opencode.ai/v2/install | bash
 
 CMD ["opencode"]
