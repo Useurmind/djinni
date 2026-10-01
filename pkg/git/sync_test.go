@@ -21,20 +21,42 @@ func TestCreatePatch(t *testing.T) {
 	output, err := gitInitCmd.CombinedOutput()
 	require.NoError(t, err, "git init failed: %s", string(output))
 
-	require.NoError(t, exec.Command("git", "config", "user.name", "Test").Run())
-	require.NoError(t, exec.Command("git", "config", "user.email", "test@test.com").Run())
+	// Set git config in the repo
+	configCmd := exec.Command("git", "config", "user.name", "Test")
+	configCmd.Dir = sourceDir
+	require.NoError(t, configCmd.Run())
+
+	configCmd = exec.Command("git", "config", "user.email", "test@test.com")
+	configCmd.Dir = sourceDir
+	require.NoError(t, configCmd.Run())
 
 	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "README.md"), []byte("# Test"), 0644))
 
-	require.NoError(t, exec.Command("git", "add", ".").Run())
-	require.NoError(t, exec.Command("git", "commit", "-m", "Initial commit").Run())
-	require.NoError(t, exec.Command("git", "branch", "-M", "main").Run())
+	addCmd := exec.Command("git", "add", ".")
+	addCmd.Dir = sourceDir
+	require.NoError(t, addCmd.Run())
 
-	require.NoError(t, exec.Command("git", "checkout", "-b", "feature/test").Run())
+	commitCmd := exec.Command("git", "commit", "-m", "Initial commit")
+	commitCmd.Dir = sourceDir
+	require.NoError(t, commitCmd.Run())
+
+	branchCmd := exec.Command("git", "branch", "-M", "main")
+	branchCmd.Dir = sourceDir
+	require.NoError(t, branchCmd.Run())
+
+	branchCmd = exec.Command("git", "checkout", "-b", "feature/test")
+	branchCmd.Dir = sourceDir
+	require.NoError(t, branchCmd.Run())
 
 	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "new_file.txt"), []byte("test content"), 0644))
-	require.NoError(t, exec.Command("git", "add", ".").Run())
-	require.NoError(t, exec.Command("git", "commit", "-m", "Add new file").Run())
+
+	addCmd = exec.Command("git", "add", ".")
+	addCmd.Dir = sourceDir
+	require.NoError(t, addCmd.Run())
+
+	commitCmd = exec.Command("git", "commit", "-m", "Add new file")
+	commitCmd.Dir = sourceDir
+	require.NoError(t, commitCmd.Run())
 
 	patchDir := filepath.Join(tempDir, "patches")
 	require.NoError(t, os.MkdirAll(patchDir, 0755))
@@ -61,20 +83,42 @@ func TestApplyPatch(t *testing.T) {
 	output, err := gitInitCmd.CombinedOutput()
 	require.NoError(t, err, "git init failed: %s", string(output))
 
-	require.NoError(t, exec.Command("git", "config", "user.name", "Test").Run())
-	require.NoError(t, exec.Command("git", "config", "user.email", "test@test.com").Run())
+	// Set git config in the repo
+	configCmd := exec.Command("git", "config", "user.name", "Test")
+	configCmd.Dir = sourceDir
+	require.NoError(t, configCmd.Run())
+
+	configCmd = exec.Command("git", "config", "user.email", "test@test.com")
+	configCmd.Dir = sourceDir
+	require.NoError(t, configCmd.Run())
 
 	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "README.md"), []byte("# Test"), 0644))
 
-	require.NoError(t, exec.Command("git", "add", ".").Run())
-	require.NoError(t, exec.Command("git", "commit", "-m", "Initial commit").Run())
-	require.NoError(t, exec.Command("git", "branch", "-M", "main").Run())
+	addCmd := exec.Command("git", "add", ".")
+	addCmd.Dir = sourceDir
+	require.NoError(t, addCmd.Run())
 
-	require.NoError(t, exec.Command("git", "checkout", "-b", "feature/test").Run())
+	commitCmd := exec.Command("git", "commit", "-m", "Initial commit")
+	commitCmd.Dir = sourceDir
+	require.NoError(t, commitCmd.Run())
+
+	branchCmd := exec.Command("git", "branch", "-M", "main")
+	branchCmd.Dir = sourceDir
+	require.NoError(t, branchCmd.Run())
+
+	branchCmd = exec.Command("git", "checkout", "-b", "feature/test")
+	branchCmd.Dir = sourceDir
+	require.NoError(t, branchCmd.Run())
 
 	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "new_file.txt"), []byte("test content"), 0644))
-	require.NoError(t, exec.Command("git", "add", ".").Run())
-	require.NoError(t, exec.Command("git", "commit", "-m", "Add new file").Run())
+
+	addCmd = exec.Command("git", "add", ".")
+	addCmd.Dir = sourceDir
+	require.NoError(t, addCmd.Run())
+
+	commitCmd = exec.Command("git", "commit", "-m", "Add new file")
+	commitCmd.Dir = sourceDir
+	require.NoError(t, commitCmd.Run())
 
 	patchDir := filepath.Join(tempDir, "patches")
 	require.NoError(t, os.MkdirAll(patchDir, 0755))
@@ -93,23 +137,39 @@ func TestApplyPatch(t *testing.T) {
 	output, err = gitInitCmd.CombinedOutput()
 	require.NoError(t, err, "git init failed: %s", string(output))
 
-	require.NoError(t, exec.Command("git", "config", "user.name", "Test").Run())
-	require.NoError(t, exec.Command("git", "config", "user.email", "test@test.com").Run())
+	// Set git config in the repo
+	configCmd = exec.Command("git", "config", "user.name", "Test")
+	configCmd.Dir = targetDir
+	require.NoError(t, configCmd.Run())
+
+	configCmd = exec.Command("git", "config", "user.email", "test@test.com")
+	configCmd.Dir = targetDir
+	require.NoError(t, configCmd.Run())
 
 	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "README.md"), []byte("# Target"), 0644))
 
-	require.NoError(t, exec.Command("git", "add", ".").Run())
-	require.NoError(t, exec.Command("git", "commit", "-m", "Initial commit").Run())
-	require.NoError(t, exec.Command("git", "branch", "-M", "main").Run())
+	addCmd = exec.Command("git", "add", ".")
+	addCmd.Dir = targetDir
+	require.NoError(t, addCmd.Run())
+
+	commitCmd = exec.Command("git", "commit", "-m", "Initial commit")
+	commitCmd.Dir = targetDir
+	require.NoError(t, commitCmd.Run())
+
+	branchCmd = exec.Command("git", "branch", "-M", "main")
+	branchCmd.Dir = targetDir
+	require.NoError(t, branchCmd.Run())
 
 	err = ApplyPatch(targetDir, patches[0])
 	require.NoError(t, err)
 
 	assert.FileExists(t, filepath.Join(targetDir, "new_file.txt"))
 
-	statusOutput, err := execCommandOutput("git", []string{"diff", "--name-only"}, targetDir)
+	statusCmd := exec.Command("git", "diff", "--name-only")
+	statusCmd.Dir = targetDir
+	statusOutput, err := statusCmd.CombinedOutput()
 	require.NoError(t, err)
-	assert.Empty(t, statusOutput, "No staged changes should exist after ApplyPatch (user needs to staging/commit)")
+	assert.Empty(t, string(statusOutput), "No staged changes should exist after ApplyPatch (user needs to staging/commit)")
 }
 
 func execCommandOutput(name string, args []string, workdir string) (string, error) {
@@ -130,21 +190,43 @@ func TestCreatePatchAndApplyIntegration(t *testing.T) {
 	output, err := gitInitCmd.CombinedOutput()
 	require.NoError(t, err, "git init failed: %s", string(output))
 
-	require.NoError(t, exec.Command("git", "config", "user.name", "Test").Run())
-	require.NoError(t, exec.Command("git", "config", "user.email", "test@test.com").Run())
+	// Set git config in the repo
+	configCmd := exec.Command("git", "config", "user.name", "Test")
+	configCmd.Dir = sourceDir
+	require.NoError(t, configCmd.Run())
+
+	configCmd = exec.Command("git", "config", "user.email", "test@test.com")
+	configCmd.Dir = sourceDir
+	require.NoError(t, configCmd.Run())
 
 	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "README.md"), []byte("# Source"), 0644))
 
-	require.NoError(t, exec.Command("git", "add", ".").Run())
-	require.NoError(t, exec.Command("git", "commit", "-m", "Initial commit").Run())
-	require.NoError(t, exec.Command("git", "branch", "-M", "main").Run())
+	addCmd := exec.Command("git", "add", ".")
+	addCmd.Dir = sourceDir
+	require.NoError(t, addCmd.Run())
 
-	require.NoError(t, exec.Command("git", "checkout", "-b", "feature/test").Run())
+	commitCmd := exec.Command("git", "commit", "-m", "Initial commit")
+	commitCmd.Dir = sourceDir
+	require.NoError(t, commitCmd.Run())
+
+	branchCmd := exec.Command("git", "branch", "-M", "main")
+	branchCmd.Dir = sourceDir
+	require.NoError(t, branchCmd.Run())
+
+	branchCmd = exec.Command("git", "checkout", "-b", "feature/test")
+	branchCmd.Dir = sourceDir
+	require.NoError(t, branchCmd.Run())
 
 	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "file1.txt"), []byte("content1"), 0644))
 	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "file2.txt"), []byte("content2"), 0644))
-	require.NoError(t, exec.Command("git", "add", ".").Run())
-	require.NoError(t, exec.Command("git", "commit", "-m", "Add two files").Run())
+
+	addCmd = exec.Command("git", "add", ".")
+	addCmd.Dir = sourceDir
+	require.NoError(t, addCmd.Run())
+
+	commitCmd = exec.Command("git", "commit", "-m", "Add two files")
+	commitCmd.Dir = sourceDir
+	require.NoError(t, commitCmd.Run())
 
 	patchDir := filepath.Join(tempDir, "patches")
 	require.NoError(t, os.MkdirAll(patchDir, 0755))
@@ -163,14 +245,28 @@ func TestCreatePatchAndApplyIntegration(t *testing.T) {
 	output, err = gitInitCmd.CombinedOutput()
 	require.NoError(t, err, "git init failed: %s", string(output))
 
-	require.NoError(t, exec.Command("git", "config", "user.name", "Test").Run())
-	require.NoError(t, exec.Command("git", "config", "user.email", "test@test.com").Run())
+	// Set git config in the repo
+	configCmd = exec.Command("git", "config", "user.name", "Test")
+	configCmd.Dir = targetDir
+	require.NoError(t, configCmd.Run())
+
+	configCmd = exec.Command("git", "config", "user.email", "test@test.com")
+	configCmd.Dir = targetDir
+	require.NoError(t, configCmd.Run())
 
 	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "README.md"), []byte("# Target"), 0644))
 
-	require.NoError(t, exec.Command("git", "add", ".").Run())
-	require.NoError(t, exec.Command("git", "commit", "-m", "Initial commit").Run())
-	require.NoError(t, exec.Command("git", "branch", "-M", "main").Run())
+	addCmd = exec.Command("git", "add", ".")
+	addCmd.Dir = targetDir
+	require.NoError(t, addCmd.Run())
+
+	commitCmd = exec.Command("git", "commit", "-m", "Initial commit")
+	commitCmd.Dir = targetDir
+	require.NoError(t, commitCmd.Run())
+
+	branchCmd = exec.Command("git", "branch", "-M", "main")
+	branchCmd.Dir = targetDir
+	require.NoError(t, branchCmd.Run())
 
 	err = ApplyPatch(targetDir, patches[0])
 	require.NoError(t, err)
@@ -178,7 +274,9 @@ func TestCreatePatchAndApplyIntegration(t *testing.T) {
 	assert.FileExists(t, filepath.Join(targetDir, "file1.txt"))
 	assert.FileExists(t, filepath.Join(targetDir, "file2.txt"))
 
-	statusOutput, err := execCommandOutput("git", []string{"diff", "--name-only"}, targetDir)
+	statusCmd := exec.Command("git", "diff", "--name-only")
+	statusCmd.Dir = targetDir
+	statusOutput, err := statusCmd.CombinedOutput()
 	require.NoError(t, err)
-	assert.Empty(t, statusOutput, "No staged changes should exist after ApplyPatch (user needs to staging/commit)")
+	assert.Empty(t, string(statusOutput), "No staged changes should exist after ApplyPatch (user needs to staging/commit)")
 }
