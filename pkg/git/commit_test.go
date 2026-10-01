@@ -22,10 +22,24 @@ func TestCommitAll(t *testing.T) {
 	output, err := gitInitCmd.CombinedOutput()
 	require.NoError(t, err, "git init failed: %s", string(output))
 
+	// Set git config in the repo
+	configCmd := exec.Command("git", "config", "user.name", "Test")
+	configCmd.Dir = sourceDir
+	require.NoError(t, configCmd.Run())
+
+	configCmd = exec.Command("git", "config", "user.email", "test@test.com")
+	configCmd.Dir = sourceDir
+	require.NoError(t, configCmd.Run())
+
 	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "README.md"), []byte("# Test"), 0644))
 
-	require.NoError(t, exec.Command("git", "add", ".").Run())
-	require.NoError(t, exec.Command("git", "commit", "-m", "Initial commit").Run())
+	addCmd := exec.Command("git", "add", ".")
+	addCmd.Dir = sourceDir
+	require.NoError(t, addCmd.Run())
+
+	commitCmd := exec.Command("git", "commit", "-m", "Initial commit")
+	commitCmd.Dir = sourceDir
+	require.NoError(t, commitCmd.Run())
 
 	newFile := filepath.Join(sourceDir, "new_file.txt")
 	require.NoError(t, os.WriteFile(newFile, []byte("test content"), 0644))

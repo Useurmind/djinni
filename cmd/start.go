@@ -13,6 +13,7 @@ import (
 	"github.com/useurmind/djinni/pkg/container"
 	"github.com/useurmind/djinni/pkg/git"
 	"github.com/useurmind/djinni/pkg/log"
+	"github.com/useurmind/djinni/pkg/ui"
 )
 
 func execCommand(name string, args []string, workdir string) error {
@@ -45,7 +46,7 @@ func getDeleteOnExitMode(configValue string, rmFlag bool) (string, error) {
 		return configValue, nil
 	}
 
-	return git.PromptDeleteOnExit()
+	return ui.PromptDeleteOnExit()
 }
 
 var startCmd = &cobra.Command{
@@ -208,10 +209,10 @@ func runStartAgent(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	mountSources := git.GetMountPaths(agentCfg.Mounts)
+	mountSources := container.GetMountPaths(agentCfg.Mounts)
 	if len(mountSources) > 0 {
 		log.Info("Restoring file ownership after container exit...")
-		if err := git.RestoreOwnership(mountSources); err != nil {
+		if err := container.RestoreOwnership(mountSources); err != nil {
 			return fmt.Errorf("failed to restore ownership: %v", err)
 		}
 	}
@@ -381,7 +382,7 @@ func handlePostExecution(agentCfg *config.AgentConfig, cfg *config.Config, cwd, 
 
 	syncApproach := agentCfg.SyncApproach
 	if syncApproach == "" {
-		syncApproach, err = git.PromptSyncApproach()
+		syncApproach, err = ui.PromptSyncApproach()
 		if err != nil {
 			return fmt.Errorf("failed to prompt for sync approach: %w", err)
 		}
@@ -389,7 +390,7 @@ func handlePostExecution(agentCfg *config.AgentConfig, cfg *config.Config, cwd, 
 
 	autodelete := agentCfg.AutoDeleteAgentBranch
 	if !autodelete && syncApproach != "none" {
-		autodelete, err = git.PromptAutoDeleteBranch()
+		autodelete, err = ui.PromptAutoDeleteBranch()
 		if err != nil {
 			return fmt.Errorf("failed to prompt for autodelete: %w", err)
 		}
@@ -523,16 +524,16 @@ func syncWithBranch(agentCfg *config.AgentConfig, branchName, workspacePath, cwd
 }
 
 func commitUncommittedChanges(cwd, configPath string) error {
-	mode, msg, err := git.PromptCommitChanges(cwd, configPath)
+	mode, msg, err := ui.PromptCommitChanges(cwd, configPath)
 	if err != nil {
 		return fmt.Errorf("failed to prompt for commit: %w", err)
 	}
 
-	if mode == git.CommitModeNone {
+	if mode == ui.CommitModeNone {
 		return nil
 	}
 
-	if mode == git.CommitModeAI {
+	if mode == ui.CommitModeAI {
 		globalCfg, err := config.LoadGlobalConfig()
 		if err != nil {
 			return fmt.Errorf("failed to load global config: %w", err)
@@ -569,7 +570,7 @@ func commitUncommittedChanges(cwd, configPath string) error {
 			return fmt.Errorf("failed to generate commit message: %w", err)
 		}
 		msg = strings.TrimSpace(msg)
-	} else if mode == git.CommitModeManual && msg == "" {
+	} else if mode == ui.CommitModeManual && msg == "" {
 		return fmt.Errorf("manual commit message is empty")
 	}
 

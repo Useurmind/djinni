@@ -1,4 +1,4 @@
-.PHONY: build test vet lint run clean deadcode check tools
+.PHONY: build test vet lint run clean deadcode check tools install
 
 BUILD_DIR = ./bin
 BINARY = $(BUILD_DIR)/djinni
@@ -36,3 +36,6 @@ tools:
 
 	# deadcode
 	go install golang.org/x/tools/cmd/deadcode@latest
+
+install: build
+	sudo install -m 755 $(BINARY) /usr/local/bin/djinni

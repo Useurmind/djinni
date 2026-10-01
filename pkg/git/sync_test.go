@@ -172,13 +172,6 @@ func TestApplyPatch(t *testing.T) {
 	assert.Empty(t, string(statusOutput), "No staged changes should exist after ApplyPatch (user needs to staging/commit)")
 }
 
-func execCommandOutput(name string, args []string, workdir string) (string, error) {
-	cmd := exec.Command(name, args...)
-	cmd.Dir = workdir
-	output, err := cmd.CombinedOutput()
-	return string(output), err
-}
-
 func TestCreatePatchAndApplyIntegration(t *testing.T) {
 	tempDir := t.TempDir()
 
