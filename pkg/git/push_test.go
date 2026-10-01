@@ -31,10 +31,10 @@ func TestPushBranch(t *testing.T) {
 
 	require.NoError(t, os.WriteFile(filepath.Join(localDir, "README.md"), []byte("# Test"), 0644))
 
-	require.NoError(t, execCommand("git", []string{"add", "."}, localDir))
-	require.NoError(t, execCommand("git", []string{"commit", "-m", "Initial commit"}, localDir))
-	require.NoError(t, execCommand("git", []string{"branch", "-M", "main"}, localDir))
-	require.NoError(t, execCommand("git", []string{"remote", "add", "origin", remoteDir}, localDir))
+	require.NoError(t, exec.Command("git", "add", ".").Run())
+	require.NoError(t, exec.Command("git", "commit", "-m", "Initial commit").Run())
+	require.NoError(t, exec.Command("git", "branch", "-M", "main").Run())
+	require.NoError(t, exec.Command("git", "remote", "add", "origin", remoteDir).Run())
 
 	err = PushBranch(localDir, "main")
 	require.NoError(t, err)

@@ -24,8 +24,8 @@ func TestCommitAll(t *testing.T) {
 
 	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "README.md"), []byte("# Test"), 0644))
 
-	require.NoError(t, execCommand("git", []string{"add", "."}, sourceDir))
-	require.NoError(t, execCommand("git", []string{"commit", "-m", "Initial commit"}, sourceDir))
+	require.NoError(t, exec.Command("git", "add", ".").Run())
+	require.NoError(t, exec.Command("git", "commit", "-m", "Initial commit").Run())
 
 	newFile := filepath.Join(sourceDir, "new_file.txt")
 	require.NoError(t, os.WriteFile(newFile, []byte("test content"), 0644))

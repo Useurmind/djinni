@@ -21,20 +21,20 @@ func TestCreatePatch(t *testing.T) {
 	output, err := gitInitCmd.CombinedOutput()
 	require.NoError(t, err, "git init failed: %s", string(output))
 
-	require.NoError(t, execCommand("git", []string{"config", "user.name", "Test"}, sourceDir))
-	require.NoError(t, execCommand("git", []string{"config", "user.email", "test@test.com"}, sourceDir))
+	require.NoError(t, exec.Command("git", "config", "user.name", "Test").Run())
+	require.NoError(t, exec.Command("git", "config", "user.email", "test@test.com").Run())
 
 	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "README.md"), []byte("# Test"), 0644))
 
-	require.NoError(t, execCommand("git", []string{"add", "."}, sourceDir))
-	require.NoError(t, execCommand("git", []string{"commit", "-m", "Initial commit"}, sourceDir))
-	require.NoError(t, execCommand("git", []string{"branch", "-M", "main"}, sourceDir))
+	require.NoError(t, exec.Command("git", "add", ".").Run())
+	require.NoError(t, exec.Command("git", "commit", "-m", "Initial commit").Run())
+	require.NoError(t, exec.Command("git", "branch", "-M", "main").Run())
 
-	require.NoError(t, execCommand("git", []string{"checkout", "-b", "feature/test"}, sourceDir))
+	require.NoError(t, exec.Command("git", "checkout", "-b", "feature/test").Run())
 
 	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "new_file.txt"), []byte("test content"), 0644))
-	require.NoError(t, execCommand("git", []string{"add", "."}, sourceDir))
-	require.NoError(t, execCommand("git", []string{"commit", "-m", "Add new file"}, sourceDir))
+	require.NoError(t, exec.Command("git", "add", ".").Run())
+	require.NoError(t, exec.Command("git", "commit", "-m", "Add new file").Run())
 
 	patchDir := filepath.Join(tempDir, "patches")
 	require.NoError(t, os.MkdirAll(patchDir, 0755))
@@ -61,20 +61,20 @@ func TestApplyPatch(t *testing.T) {
 	output, err := gitInitCmd.CombinedOutput()
 	require.NoError(t, err, "git init failed: %s", string(output))
 
-	require.NoError(t, execCommand("git", []string{"config", "user.name", "Test"}, sourceDir))
-	require.NoError(t, execCommand("git", []string{"config", "user.email", "test@test.com"}, sourceDir))
+	require.NoError(t, exec.Command("git", "config", "user.name", "Test").Run())
+	require.NoError(t, exec.Command("git", "config", "user.email", "test@test.com").Run())
 
 	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "README.md"), []byte("# Test"), 0644))
 
-	require.NoError(t, execCommand("git", []string{"add", "."}, sourceDir))
-	require.NoError(t, execCommand("git", []string{"commit", "-m", "Initial commit"}, sourceDir))
-	require.NoError(t, execCommand("git", []string{"branch", "-M", "main"}, sourceDir))
+	require.NoError(t, exec.Command("git", "add", ".").Run())
+	require.NoError(t, exec.Command("git", "commit", "-m", "Initial commit").Run())
+	require.NoError(t, exec.Command("git", "branch", "-M", "main").Run())
 
-	require.NoError(t, execCommand("git", []string{"checkout", "-b", "feature/test"}, sourceDir))
+	require.NoError(t, exec.Command("git", "checkout", "-b", "feature/test").Run())
 
 	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "new_file.txt"), []byte("test content"), 0644))
-	require.NoError(t, execCommand("git", []string{"add", "."}, sourceDir))
-	require.NoError(t, execCommand("git", []string{"commit", "-m", "Add new file"}, sourceDir))
+	require.NoError(t, exec.Command("git", "add", ".").Run())
+	require.NoError(t, exec.Command("git", "commit", "-m", "Add new file").Run())
 
 	patchDir := filepath.Join(tempDir, "patches")
 	require.NoError(t, os.MkdirAll(patchDir, 0755))
@@ -93,14 +93,14 @@ func TestApplyPatch(t *testing.T) {
 	output, err = gitInitCmd.CombinedOutput()
 	require.NoError(t, err, "git init failed: %s", string(output))
 
-	require.NoError(t, execCommand("git", []string{"config", "user.name", "Test"}, targetDir))
-	require.NoError(t, execCommand("git", []string{"config", "user.email", "test@test.com"}, targetDir))
+	require.NoError(t, exec.Command("git", "config", "user.name", "Test").Run())
+	require.NoError(t, exec.Command("git", "config", "user.email", "test@test.com").Run())
 
 	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "README.md"), []byte("# Target"), 0644))
 
-	require.NoError(t, execCommand("git", []string{"add", "."}, targetDir))
-	require.NoError(t, execCommand("git", []string{"commit", "-m", "Initial commit"}, targetDir))
-	require.NoError(t, execCommand("git", []string{"branch", "-M", "main"}, targetDir))
+	require.NoError(t, exec.Command("git", "add", ".").Run())
+	require.NoError(t, exec.Command("git", "commit", "-m", "Initial commit").Run())
+	require.NoError(t, exec.Command("git", "branch", "-M", "main").Run())
 
 	err = ApplyPatch(targetDir, patches[0])
 	require.NoError(t, err)
@@ -130,21 +130,21 @@ func TestCreatePatchAndApplyIntegration(t *testing.T) {
 	output, err := gitInitCmd.CombinedOutput()
 	require.NoError(t, err, "git init failed: %s", string(output))
 
-	require.NoError(t, execCommand("git", []string{"config", "user.name", "Test"}, sourceDir))
-	require.NoError(t, execCommand("git", []string{"config", "user.email", "test@test.com"}, sourceDir))
+	require.NoError(t, exec.Command("git", "config", "user.name", "Test").Run())
+	require.NoError(t, exec.Command("git", "config", "user.email", "test@test.com").Run())
 
 	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "README.md"), []byte("# Source"), 0644))
 
-	require.NoError(t, execCommand("git", []string{"add", "."}, sourceDir))
-	require.NoError(t, execCommand("git", []string{"commit", "-m", "Initial commit"}, sourceDir))
-	require.NoError(t, execCommand("git", []string{"branch", "-M", "main"}, sourceDir))
+	require.NoError(t, exec.Command("git", "add", ".").Run())
+	require.NoError(t, exec.Command("git", "commit", "-m", "Initial commit").Run())
+	require.NoError(t, exec.Command("git", "branch", "-M", "main").Run())
 
-	require.NoError(t, execCommand("git", []string{"checkout", "-b", "feature/test"}, sourceDir))
+	require.NoError(t, exec.Command("git", "checkout", "-b", "feature/test").Run())
 
 	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "file1.txt"), []byte("content1"), 0644))
 	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "file2.txt"), []byte("content2"), 0644))
-	require.NoError(t, execCommand("git", []string{"add", "."}, sourceDir))
-	require.NoError(t, execCommand("git", []string{"commit", "-m", "Add two files"}, sourceDir))
+	require.NoError(t, exec.Command("git", "add", ".").Run())
+	require.NoError(t, exec.Command("git", "commit", "-m", "Add two files").Run())
 
 	patchDir := filepath.Join(tempDir, "patches")
 	require.NoError(t, os.MkdirAll(patchDir, 0755))
@@ -163,14 +163,14 @@ func TestCreatePatchAndApplyIntegration(t *testing.T) {
 	output, err = gitInitCmd.CombinedOutput()
 	require.NoError(t, err, "git init failed: %s", string(output))
 
-	require.NoError(t, execCommand("git", []string{"config", "user.name", "Test"}, targetDir))
-	require.NoError(t, execCommand("git", []string{"config", "user.email", "test@test.com"}, targetDir))
+	require.NoError(t, exec.Command("git", "config", "user.name", "Test").Run())
+	require.NoError(t, exec.Command("git", "config", "user.email", "test@test.com").Run())
 
 	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "README.md"), []byte("# Target"), 0644))
 
-	require.NoError(t, execCommand("git", []string{"add", "."}, targetDir))
-	require.NoError(t, execCommand("git", []string{"commit", "-m", "Initial commit"}, targetDir))
-	require.NoError(t, execCommand("git", []string{"branch", "-M", "main"}, targetDir))
+	require.NoError(t, exec.Command("git", "add", ".").Run())
+	require.NoError(t, exec.Command("git", "commit", "-m", "Initial commit").Run())
+	require.NoError(t, exec.Command("git", "branch", "-M", "main").Run())
 
 	err = ApplyPatch(targetDir, patches[0])
 	require.NoError(t, err)

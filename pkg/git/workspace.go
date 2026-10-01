@@ -10,6 +10,7 @@ import (
 	"github.com/useurmind/djinni/pkg/utils"
 )
 
+// CloneToTemp clones a repository to a temporary directory
 func CloneToTemp(sourceDir, baseDir, agentName, taskName string) (string, error) {
 	repoName, err := GetRepoName(sourceDir)
 	if err != nil {
@@ -37,19 +38,20 @@ func CloneToTemp(sourceDir, baseDir, agentName, taskName string) (string, error)
 		return "", fmt.Errorf("failed to create destination directory: %w", err)
 	}
 
-	if err := execCommand("git", []string{"clone", sourceDir, destDir}, sourceDir); err != nil {
+	if err := utils.ExecCommand("git", []string{"clone", sourceDir, destDir}, sourceDir); err != nil {
 		return "", fmt.Errorf("failed to clone repository: %w", err)
 	}
 
 	return destDir, nil
 }
 
+// CheckoutNewBranch creates a new branch
 func CheckoutNewBranch(repoPath, taskName string) error {
 	log.Info(fmt.Sprintf("Creating feature branch for task: %s", taskName))
 
 	branchName := fmt.Sprintf("feature/%s", taskName)
 
-	if err := execCommand("git", []string{"checkout", "-b", branchName}, repoPath); err != nil {
+	if err := utils.ExecCommand("git", []string{"checkout", "-b", branchName}, repoPath); err != nil {
 		if strings.Contains(err.Error(), "already exists") {
 			log.Info(fmt.Sprintf("Branch %s already exists, skipping", branchName))
 			return nil
@@ -61,6 +63,7 @@ func CheckoutNewBranch(repoPath, taskName string) error {
 	return nil
 }
 
+// GetRepoName returns the repository name from a directory
 func GetRepoName(dir string) (string, error) {
 	absDir, err := filepath.Abs(dir)
 	if err != nil {
@@ -79,10 +82,11 @@ func GetRepoName(dir string) (string, error) {
 	return filepath.Base(absDir), nil
 }
 
+// DeleteBranch deletes a branch
 func DeleteBranch(repoPath, branchName string) error {
 	log.Info(fmt.Sprintf("Deleting branch %s", branchName))
 
-	if err := execCommand("git", []string{"branch", "-D", branchName}, repoPath); err != nil {
+	if err := utils.ExecCommand("git", []string{"branch", "-D", branchName}, repoPath); err != nil {
 		return fmt.Errorf("failed to delete branch %s: %w", branchName, err)
 	}
 
@@ -90,22 +94,14 @@ func DeleteBranch(repoPath, branchName string) error {
 	return nil
 }
 
+// AddFiles stages all files in a repository
 func AddFiles(repoPath string) error {
 	log.Info(fmt.Sprintf("Staging all changes in %s", repoPath))
 
-	if err := execCommand("git", []string{"add", "."}, repoPath); err != nil {
+	if err := utils.ExecCommand("git", []string{"add", "."}, repoPath); err != nil {
 		return fmt.Errorf("failed to stage files: %w", err)
 	}
 
 	log.Success(fmt.Sprintf("Staged all changes in %s", repoPath))
-	return nil
-}
-
-func execCommand(name string, args []string, workdir string) error {
-	if err := utils.ExecCommand(name, args, workdir); err != nil {
-		return err
-	}
-
-	log.Info(fmt.Sprintf("Executed: %s %s", name, strings.Join(args, " ")))
 	return nil
 }
