@@ -130,8 +130,8 @@ func StartProxyContainer(client *Client, configPath string, networkName, proxyCo
 
 // ConnectProxyToInternet connects the proxy container to the bridge network for internet access
 func ConnectProxyToInternet(client *Client, proxyContainerName string) error {
-	// Connect proxy to bridge network (podman default for internet)
-	args := []string{"network", "connect", "bridge", proxyContainerName}
+	// Connect proxy to podman network (podman default for internet)
+	args := []string{"network", "connect", "podman", proxyContainerName}
 
 	cmd := exec.Command(client.Binary, args...)
 	output, err := cmd.CombinedOutput()
