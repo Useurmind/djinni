@@ -32,7 +32,7 @@ agents:
       - python
       - -m
       - agent.harness
-    image: python:3.11-slim
+    image: docker.io/library/python:3.11-slim
     mounts:
       - source: ./specs
         destination: /app/specs

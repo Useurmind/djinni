@@ -12,6 +12,9 @@ import (
 
 const DefaultSquidPort = 3128
 
+// DefaultProxyImage is the fully-qualified container image for the Squid proxy
+const DefaultProxyImage = "docker.io/library/ubuntu:squid:latest"
+
 // GenerateSquidConfig generates a squid.conf file based on network configuration
 func GenerateSquidConfig(enabled bool, allowList []string, port int, baseDir, repoName, agentName, taskName string) (string, error) {
 	if !enabled {
@@ -112,7 +115,7 @@ func StartProxyContainer(client *Client, configPath string, networkName, proxyCo
 		"--network", networkName,
 		"-v", fmt.Sprintf("%s:/etc/squid/squid.conf:Z,ro,U", configPath),
 		"-p", fmt.Sprintf("%d:%d", squidPort, squidPort),
-		"ubuntu/squid:latest",
+		DefaultProxyImage,
 	}
 
 	cmd := exec.Command(client.Binary, args...)

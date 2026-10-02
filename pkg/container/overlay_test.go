@@ -115,7 +115,7 @@ func TestCopyImageFolderToLower(t *testing.T) {
 		t.Skipf("Skipping test: no container runtime available: %v", err)
 	}
 
-	err = CopyImageFolderToLower(client, "ubuntu:latest", "/etc", lowerDir)
+	err = CopyImageFolderToLower(client, "docker.io/library/ubuntu:latest", "/etc", lowerDir)
 	if err != nil {
 		_ = os.RemoveAll(lowerDir)
 		t.Skipf("Skipping test: could not copy from container: %v", err)

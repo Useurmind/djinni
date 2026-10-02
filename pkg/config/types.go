@@ -3,7 +3,9 @@ package config
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
+	"github.com/useurmind/djinni/pkg/log"
 	"github.com/useurmind/djinni/pkg/utils"
 )
 
@@ -84,7 +86,7 @@ type ProxyConfig struct {
 	Enabled bool `yaml:"enabled,omitempty"`
 	// AllowList specifies domains that are allowed through the proxy
 	AllowList []string `yaml:"allowList,omitempty"`
-	// Image specifies the container image for the proxy (default: ubuntu/squid:latest)
+	// Image specifies the container image for the proxy (default: docker.io/library/ubuntu:squid:latest)
 	Image string `yaml:"image,omitempty"`
 }
 
@@ -144,6 +146,26 @@ type Config struct {
 	DefaultModel string `yaml:"default_model"`
 }
 
+// isShortName checks if an image name is a short name (not fully-qualified)
+// Short names lack a registry prefix like docker.io/
+func isShortName(image string) bool {
+	// Check if the image contains a registry prefix (e.g., docker.io/, registry.example.com/)
+	// Short names don't have a slash or dot before the first slash
+	parts := strings.Split(image, "/")
+	if len(parts) == 1 {
+		// No slash at all (e.g., "ubuntu")
+		return true
+	}
+	// First part before first slash - if it doesn't contain a dot or port, it's likely a short name
+	firstPart := parts[0]
+	if strings.Contains(firstPart, ".") || strings.Contains(firstPart, ":") {
+		// Contains dot (registry.domain) or colon (registry:port), so it's fully-qualified
+		return false
+	}
+	// First part is just a name without dot/colon, likely a short name
+	return true
+}
+
 func (c *Config) Validate() error {
 	if c.Agents == nil {
 		c.Agents = make(map[string]*AgentConfig)
@@ -160,6 +182,9 @@ func (c *Config) Validate() error {
 		}
 		if len(agent.HarnessCommand) == 0 {
 			return fmt.Errorf("agent '%s': harness_command is required", name)
+		}
+		if agent.Image != "" && isShortName(agent.Image) {
+			log.Warn(fmt.Sprintf("agent '%s': using short name '%s' may cause issues in non-interactive environments; consider using fully-qualified name (e.g., docker.io/library/%s:latest)", name, agent.Image, agent.Image))
 		}
 		if agent.GitWorkspace.BaseDirectory == "" {
 			agent.GitWorkspace.BaseDirectory = DefaultGitWorkspaceBase
@@ -189,6 +214,9 @@ func (c *Config) Validate() error {
 		if agent.Network.Proxy != nil {
 			if agent.Network.Proxy.Enabled && len(agent.Network.Proxy.AllowList) == 0 {
 				return fmt.Errorf("agent '%s': proxy enabled but allowList is empty", name)
+			}
+			if agent.Network.Proxy.Image != "" && isShortName(agent.Network.Proxy.Image) {
+				log.Warn(fmt.Sprintf("agent '%s': proxy using short name '%s' may cause issues in non-interactive environments; consider using fully-qualified name (e.g., docker.io/library/%s:latest)", name, agent.Network.Proxy.Image, agent.Network.Proxy.Image))
 			}
 		}
 	}

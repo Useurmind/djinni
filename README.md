@@ -82,7 +82,24 @@ See [Configuration Guide](docs/configuration.md#agent-configurationsync_approach
 | `gitpatch` | Generate patch file from agent workspace and apply to your workspace (files only) |
 | `automerge` | Merge `feature/<task>` branch directly into current local branch |
 
-### Agent Options
+### Image Naming
+
+When specifying container images in your agent configuration, **always use fully-qualified image names**. Short names (e.g., `ubuntu`, `python:3.11`) may fail in non-interactive environments.
+
+**Correct (fully-qualified):**
+```yaml
+image: docker.io/library/ubuntu:latest
+image: docker.io/library/python:3.11-slim
+image: quay.io/bitnami/postgresql:15
+```
+
+**Incorrect (short names - avoid):**
+```yaml
+image: ubuntu:latest        # May fail - no registry prefix
+image: python:3.11-slim     # May fail - no registry prefix
+```
+
+**Why?** Podman enforces short-name resolution in non-interactive environments. Without a fully-qualified name (`docker.io/library/image:tag`), Podman cannot determine which registry to use, leading to errors like "short-name resolution enforced".
 
 See [Configuration Guide](docs/configuration.md#agent-configurations) for detailed documentation.
 

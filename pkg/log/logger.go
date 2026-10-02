@@ -18,3 +18,8 @@ func Error(format string, a ...interface{}) {
 	red := color.New(color.FgRed)
 	_, _ = red.Printf("[ERROR] "+format+"\n", a...)
 }
+
+func Warn(format string, a ...interface{}) {
+	yellow := color.New(color.FgYellow)
+	_, _ = yellow.Printf("[WARN] "+format+"\n", a...)
+}
