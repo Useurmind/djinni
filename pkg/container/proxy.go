@@ -13,7 +13,7 @@ import (
 const DefaultSquidPort = 3128
 
 // DefaultProxyImage is the fully-qualified container image for the Squid proxy
-const DefaultProxyImage = "docker.io/library/ubuntu:squid:latest"
+const DefaultProxyImage = "docker.io/ubuntu/squid:latest"
 
 // GenerateSquidConfig generates a squid.conf file based on network configuration
 func GenerateSquidConfig(enabled bool, allowList []string, port int, baseDir, repoName, agentName, taskName string) (string, error) {
@@ -121,8 +121,7 @@ func StartProxyContainer(client *Client, configPath string, networkName, proxyCo
 	cmd := exec.Command(client.Binary, args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Error(fmt.Sprintf("Failed to start proxy container %s: %s", proxyContainerName, string(output)))
-		return "", fmt.Errorf("failed to start proxy container: %w", err)
+		return "", fmt.Errorf("failed to start proxy container: %w\nOutput: %s", err, string(output))
 	}
 
 	log.Info(fmt.Sprintf("Started proxy container: %s", proxyContainerName))
@@ -135,9 +134,9 @@ func ConnectProxyToInternet(client *Client, proxyContainerName string) error {
 	args := []string{"network", "connect", "bridge", proxyContainerName}
 
 	cmd := exec.Command(client.Binary, args...)
-	_, err := cmd.CombinedOutput()
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("failed to connect proxy container %s to bridge network: %w", proxyContainerName, err)
+		return fmt.Errorf("failed to connect proxy container %s to bridge network: %w\nOutput: %s", proxyContainerName, err, string(output))
 	}
 
 	log.Info(fmt.Sprintf("Connected proxy container %s to bridge network", proxyContainerName))
@@ -157,8 +156,7 @@ func StopProxyContainer(client *Client, proxyContainerName string) error {
 			log.Info(fmt.Sprintf("Container %s does not exist, nothing to stop", proxyContainerName))
 			return nil
 		}
-		log.Error(fmt.Sprintf("Failed to stop proxy container %s: %s", proxyContainerName, string(output)))
-		return fmt.Errorf("failed to stop proxy container %s: %w", proxyContainerName, err)
+		return fmt.Errorf("failed to stop proxy container %s: %w\nOutput: %s", proxyContainerName, err, string(output))
 	}
 
 	log.Info(fmt.Sprintf("Stopped proxy container: %s", proxyContainerName))
@@ -178,8 +176,7 @@ func RemoveProxyContainer(client *Client, proxyContainerName string) error {
 			log.Info(fmt.Sprintf("Container %s does not exist, nothing to remove", proxyContainerName))
 			return nil
 		}
-		log.Error(fmt.Sprintf("Failed to remove proxy container %s: %s", proxyContainerName, string(output)))
-		return fmt.Errorf("failed to remove proxy container %s: %w", proxyContainerName, err)
+		return fmt.Errorf("failed to remove proxy container %s: %w\nOutput: %s", proxyContainerName, err, string(output))
 	}
 
 	log.Info(fmt.Sprintf("Removed proxy container: %s", proxyContainerName))

@@ -86,7 +86,7 @@ type ProxyConfig struct {
 	Enabled bool `yaml:"enabled,omitempty"`
 	// AllowList specifies domains that are allowed through the proxy
 	AllowList []string `yaml:"allowList,omitempty"`
-	// Image specifies the container image for the proxy (default: docker.io/library/ubuntu:squid:latest)
+	// Image specifies the container image for the proxy (default: docker.io/ubuntu/squid:latest)
 	Image string `yaml:"image,omitempty"`
 }
 
