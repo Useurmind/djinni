@@ -24,6 +24,7 @@ func CreateInternalNetwork(client *Client, networkName string) error {
 	cmd := exec.Command(client.Binary, args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		log.Error(fmt.Sprintf("Failed to create internal network %s: %s", networkName, string(output)))
 		return fmt.Errorf("failed to create internal network %s: %w", networkName, err)
 	}
 
@@ -45,6 +46,7 @@ func RemoveNetwork(client *Client, networkName string) error {
 			log.Info(fmt.Sprintf("Network %s does not exist, nothing to remove", networkName))
 			return nil
 		}
+		log.Error(fmt.Sprintf("Failed to remove network %s: %s", networkName, string(output)))
 		return fmt.Errorf("failed to remove network %s: %w", networkName, err)
 	}
 

@@ -259,8 +259,15 @@ func (c *Client) runCommand(args []string) (int, error) {
 	if err := cmd.Run(); err != nil {
 		exitErr, ok := err.(*exec.ExitError)
 		if ok {
+			// Capture stderr from the ExitError for better debugging
+			if stderr := exitErr.Stderr; len(stderr) > 0 {
+				log.Error(fmt.Sprintf("Podman command %s %s failed: %s", c.Binary, strings.Join(args, " "), string(stderr)))
+			} else {
+				log.Error(fmt.Sprintf("Podman command %s %s failed with exit code %d", c.Binary, strings.Join(args, " "), exitErr.ExitCode()))
+			}
 			return exitErr.ExitCode(), nil
 		}
+		log.Error(fmt.Sprintf("Podman command %s %s failed: %v", c.Binary, strings.Join(args, " "), err))
 		return 1, fmt.Errorf("%s %s: %w", c.Binary, strings.Join(args, " "), err)
 	}
 

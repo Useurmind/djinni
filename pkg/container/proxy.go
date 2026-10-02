@@ -116,8 +116,9 @@ func StartProxyContainer(client *Client, configPath string, networkName, proxyCo
 	}
 
 	cmd := exec.Command(client.Binary, args...)
-	_, err := cmd.CombinedOutput()
+	output, err := cmd.CombinedOutput()
 	if err != nil {
+		log.Error(fmt.Sprintf("Failed to start proxy container %s: %s", proxyContainerName, string(output)))
 		return "", fmt.Errorf("failed to start proxy container: %w", err)
 	}
 
@@ -145,7 +146,7 @@ func StopProxyContainer(client *Client, proxyContainerName string) error {
 	args := []string{"stop", proxyContainerName}
 
 	cmd := exec.Command(client.Binary, args...)
-	_, err := cmd.CombinedOutput()
+	output, err := cmd.CombinedOutput()
 	if err != nil {
 		// Check if the error is because the container doesn't exist
 		// podman returns exit status 125 for "container not found"
@@ -153,6 +154,7 @@ func StopProxyContainer(client *Client, proxyContainerName string) error {
 			log.Info(fmt.Sprintf("Container %s does not exist, nothing to stop", proxyContainerName))
 			return nil
 		}
+		log.Error(fmt.Sprintf("Failed to stop proxy container %s: %s", proxyContainerName, string(output)))
 		return fmt.Errorf("failed to stop proxy container %s: %w", proxyContainerName, err)
 	}
 
@@ -165,7 +167,7 @@ func RemoveProxyContainer(client *Client, proxyContainerName string) error {
 	args := []string{"rm", proxyContainerName}
 
 	cmd := exec.Command(client.Binary, args...)
-	_, err := cmd.CombinedOutput()
+	output, err := cmd.CombinedOutput()
 	if err != nil {
 		// Check if the error is because the container doesn't exist
 		// podman returns exit status 125 for "container not found"
@@ -173,6 +175,7 @@ func RemoveProxyContainer(client *Client, proxyContainerName string) error {
 			log.Info(fmt.Sprintf("Container %s does not exist, nothing to remove", proxyContainerName))
 			return nil
 		}
+		log.Error(fmt.Sprintf("Failed to remove proxy container %s: %s", proxyContainerName, string(output)))
 		return fmt.Errorf("failed to remove proxy container %s: %w", proxyContainerName, err)
 	}
 
