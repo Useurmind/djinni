@@ -15,4 +15,5 @@ type ContainerCommands struct {
 	TmpfsMounts          []TmpfsMount
 	WritablePaths        []config.WritablePath
 	TempMount            *TempMount
+	Proxy                *ProxyContainerInfo
 }

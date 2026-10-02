@@ -289,6 +289,59 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "agent with valid internal network",
+			config: &Config{
+				Agents: map[string]*AgentConfig{
+					"test": {
+						Image:          "test-image",
+						HarnessCommand: []string{"echo", "test"},
+						Network: AgentNetworkConfig{
+							Internal: true,
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "agent with proxy enabled but no allow list",
+			config: &Config{
+				Agents: map[string]*AgentConfig{
+					"test": {
+						Image:          "test-image",
+						HarnessCommand: []string{"echo", "test"},
+						Network: AgentNetworkConfig{
+							Internal: true,
+							Proxy: &ProxyConfig{
+								Enabled: true,
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "agent with valid proxy configuration",
+			config: &Config{
+				Agents: map[string]*AgentConfig{
+					"test": {
+						Image:          "test-image",
+						HarnessCommand: []string{"echo", "test"},
+						Network: AgentNetworkConfig{
+							Internal: true,
+							Proxy: &ProxyConfig{
+								Enabled:   true,
+								AllowList: []string{"github.com", "google.com"},
+								Image:     "ubuntu/squid:latest",
+							},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -686,6 +739,114 @@ func TestExpandConfigPaths(t *testing.T) {
 				if result.Agents["test"].WritablePaths[i].Destination != tt.expected.Agents["test"].WritablePaths[i].Destination {
 					t.Errorf("WritablePaths[%d].Destination = %q, want %q", i, result.Agents["test"].WritablePaths[i].Destination, tt.expected.Agents["test"].WritablePaths[i].Destination)
 				}
+			}
+		})
+	}
+}
+
+func TestAgentNetworkConfig_YAMLTags(t *testing.T) {
+	n := &AgentNetworkConfig{
+		Internal: true,
+		Proxy: &ProxyConfig{
+			Enabled:   true,
+			AllowList: []string{"github.com", "google.com"},
+			Image:     "ubuntu/squid:latest",
+		},
+	}
+	if !n.Internal {
+		t.Errorf("Expected Internal true")
+	}
+	if n.Proxy == nil {
+		t.Errorf("Expected Proxy to be set")
+	}
+	if len(n.Proxy.AllowList) != 2 {
+		t.Errorf("Expected 2 allowList entries, got %d", len(n.Proxy.AllowList))
+	}
+}
+
+func TestProxyConfig_YAMLTags(t *testing.T) {
+	p := &ProxyConfig{
+		Enabled:   true,
+		AllowList: []string{"github.com", "google.com"},
+		Image:     "ubuntu/squid:latest",
+	}
+	if !p.Enabled {
+		t.Errorf("Expected Enabled true")
+	}
+	if len(p.AllowList) != 2 {
+		t.Errorf("Expected 2 allowList entries, got %d", len(p.AllowList))
+	}
+	if p.Image != "ubuntu/squid:latest" {
+		t.Errorf("Expected Image 'ubuntu/squid:latest', got '%s'", p.Image)
+	}
+}
+
+func TestConfig_Validate_WithNetwork(t *testing.T) {
+	tests := []struct {
+		name    string
+		config  *Config
+		wantErr bool
+	}{
+		{
+			name: "agent with valid internal network",
+			config: &Config{
+				Agents: map[string]*AgentConfig{
+					"test": {
+						Image:          "test-image",
+						HarnessCommand: []string{"echo", "test"},
+						Network: AgentNetworkConfig{
+							Internal: true,
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "agent with proxy enabled but no allow list",
+			config: &Config{
+				Agents: map[string]*AgentConfig{
+					"test": {
+						Image:          "test-image",
+						HarnessCommand: []string{"echo", "test"},
+						Network: AgentNetworkConfig{
+							Internal: true,
+							Proxy: &ProxyConfig{
+								Enabled: true,
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "agent with valid proxy configuration",
+			config: &Config{
+				Agents: map[string]*AgentConfig{
+					"test": {
+						Image:          "test-image",
+						HarnessCommand: []string{"echo", "test"},
+						Network: AgentNetworkConfig{
+							Internal: true,
+							Proxy: &ProxyConfig{
+								Enabled:   true,
+								AllowList: []string{"github.com", "google.com"},
+								Image:     "ubuntu/squid:latest",
+							},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.config.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

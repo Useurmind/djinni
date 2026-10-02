@@ -40,6 +40,8 @@ type AgentConfig struct {
 	TmpfsMounts []TmpfsMount `yaml:"tmpfsMounts,omitempty"`
 	// WritablePaths specifies paths that should be writable with content from the container image
 	WritablePaths []WritablePath `yaml:"writablePaths,omitempty"`
+	// Network configures internal network and proxy settings for the agent
+	Network AgentNetworkConfig `yaml:"network,omitempty"`
 }
 
 // Mount represents a volume mount from host to container
@@ -74,6 +76,24 @@ type WritablePath struct {
 	Name string `yaml:"name"`
 	// Destination is the path inside the container (required)
 	Destination string `yaml:"destination"`
+}
+
+// ProxyConfig configures a proxy for agent network traffic
+type ProxyConfig struct {
+	// Enabled enables or disables the proxy
+	Enabled bool `yaml:"enabled,omitempty"`
+	// AllowList specifies domains that are allowed through the proxy
+	AllowList []string `yaml:"allowList,omitempty"`
+	// Image specifies the container image for the proxy (default: ubuntu/squid:latest)
+	Image string `yaml:"image,omitempty"`
+}
+
+// AgentNetworkConfig configures internal network and proxy settings for an agent
+type AgentNetworkConfig struct {
+	// Internal enables internal network isolation for the agent
+	Internal bool `yaml:"internal,omitempty"`
+	// Proxy configures HTTP proxy settings for the agent
+	Proxy *ProxyConfig `yaml:"proxy,omitempty"`
 }
 
 // FilesToCopy represents a file to copy into the container
@@ -164,6 +184,11 @@ func (c *Config) Validate() error {
 			}
 			if writablePath.Destination == "" {
 				return fmt.Errorf("agent '%s': writablePaths.destination is required", name)
+			}
+		}
+		if agent.Network.Proxy != nil {
+			if agent.Network.Proxy.Enabled && len(agent.Network.Proxy.AllowList) == 0 {
+				return fmt.Errorf("agent '%s': proxy enabled but allowList is empty", name)
 			}
 		}
 	}

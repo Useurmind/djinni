@@ -115,7 +115,25 @@ func runStartAgent(cmd *cobra.Command, args []string) error {
 	}
 
 	baseDir := agentCfg.GitWorkspace.BaseDirectory
-	client, image, commands, workspacePath, err := prepareWorkspace(agentCfg, cwd, agentName, taskName, baseDir)
+	client, err := container.NewClient(baseDir)
+	if err != nil {
+		return fmt.Errorf("failed to initialize container client: %w", err)
+	}
+
+	// Cleanup any existing resources for this agent before starting
+	if err := client.CleanupExistingProxy(agentName); err != nil {
+		log.Error(fmt.Sprintf("Failed to cleanup existing proxy: %v", err))
+	}
+	if err := client.CleanupExistingNetwork(agentName); err != nil {
+		log.Error(fmt.Sprintf("Failed to cleanup existing network: %v", err))
+	}
+	if taskName != "" {
+		if err := client.CleanupExistingWorkspace(baseDir, agentName, taskName); err != nil {
+			log.Error(fmt.Sprintf("Failed to cleanup existing workspace: %v", err))
+		}
+	}
+
+	image, commands, workspacePath, err := prepareWorkspace(client, agentCfg, cwd, agentName, taskName, baseDir)
 	if err != nil {
 		return err
 	}
@@ -134,10 +152,19 @@ func runStartAgent(cmd *cobra.Command, args []string) error {
 	}, 0, len(commands.WritablePaths))
 	successCount := 0
 
+	proxyInfo := commands.Proxy
+
 	deleteOnExit := "none"
 	workspaceCleanupNeeded := false
 	// Defer cleanup to run when function exits, regardless of how it exits
 	defer func() {
+		// Cleanup network and proxy first (before overlay cleanup)
+		if proxyInfo != nil {
+			if err := client.CleanupNetwork(proxyInfo); err != nil {
+				log.Error(fmt.Sprintf("Failed to cleanup network: %v", err))
+			}
+		}
+
 		for i := 0; i < successCount; i++ {
 			mp := overlayMounts[i]
 			if err := container.UnmountOverlay(mp.mountPath); err != nil {
@@ -228,22 +255,34 @@ func runStartAgent(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func prepareWorkspace(agentCfg *config.AgentConfig, cwd, agentName, taskName, baseDir string) (*container.Client, string, *container.ContainerCommands, string, error) {
-	log.Info("Initializing container client...")
-	client, err := container.NewClient(baseDir)
+func prepareWorkspace(client *container.Client, agentCfg *config.AgentConfig, cwd, agentName, taskName, baseDir string) (string, *container.ContainerCommands, string, error) {
+	log.Info("Setting up workspace...")
+
+	// Setup network before container creation
+	proxyInfo, err := client.SetupNetwork(agentName, &agentCfg.Network)
 	if err != nil {
-		return nil, "", nil, "", fmt.Errorf("failed to initialize container client: %w", err)
+		return "", nil, "", fmt.Errorf("failed to setup network: %w", err)
 	}
 
 	repoName, err := git.GetRepoName(cwd)
 	if err != nil {
-		return nil, "", nil, "", fmt.Errorf("failed to get repo name: %w", err)
+		// Cleanup network on error
+		if proxyInfo != nil {
+			_ = client.CleanupNetwork(proxyInfo)
+		}
+		return "", nil, "", fmt.Errorf("failed to get repo name: %w", err)
 	}
 
 	image, commands, workspacePath, err := setupWorkspace(agentCfg, cwd, repoName, agentName, taskName)
 	if err != nil {
-		return nil, "", nil, "", err
+		// Cleanup network on error
+		if proxyInfo != nil {
+			_ = client.CleanupNetwork(proxyInfo)
+		}
+		return "", nil, "", err
 	}
+
+	commands.Proxy = proxyInfo
 
 	for _, fc := range agentCfg.FilesToCopy {
 		commands.FilesToCopy = append(commands.FilesToCopy, config.FilesToCopy{
@@ -255,7 +294,7 @@ func prepareWorkspace(agentCfg *config.AgentConfig, cwd, agentName, taskName, ba
 	tempMountDir := container.GetCopyMountDir(baseDir, repoName, agentName, taskName)
 	log.Info("Setting up temp mount for files to copy in %s...", tempMountDir)
 	if err := os.MkdirAll(tempMountDir, 0755); err != nil {
-		return nil, "", nil, "", fmt.Errorf("failed to create temp mount directory %s: %w", tempMountDir, err)
+		return "", nil, "", fmt.Errorf("failed to create temp mount directory %s: %w", tempMountDir, err)
 	}
 	commands.TempMount = &container.TempMount{
 		Source:      tempMountDir,
@@ -265,20 +304,20 @@ func prepareWorkspace(agentCfg *config.AgentConfig, cwd, agentName, taskName, ba
 		destPath := filepath.Join(tempMountDir, fc.Name())
 		log.Info(" - Copying to temp mount: %s -> %s", fc.Source, fc.Name())
 		if err := copyFileToTempMount(fc.Source, destPath); err != nil {
-			return nil, "", nil, "", fmt.Errorf("failed to copy %s to temp mount: %w", fc.Source, err)
+			return "", nil, "", fmt.Errorf("failed to copy %s to temp mount: %w", fc.Source, err)
 		}
 	}
 
 	if workspacePath != "" {
 		log.Info(fmt.Sprintf("Using local workspace: %s", workspacePath))
 		if err := git.CheckoutNewBranch(workspacePath, taskName); err != nil {
-			return nil, "", nil, "", fmt.Errorf("failed to checkout branch: %w", err)
+			return "", nil, "", fmt.Errorf("failed to checkout branch: %w", err)
 		}
 	}
 
 	log.Info(fmt.Sprintf("Using image: %s", image))
 
-	return client, image, commands, workspacePath, nil
+	return image, commands, workspacePath, nil
 }
 
 func setupWorkspace(agentCfg *config.AgentConfig, cwd, repoName, agentName, taskName string) (string, *container.ContainerCommands, string, error) {

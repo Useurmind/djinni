@@ -1,4 +1,4 @@
-default_model: qwen3-coder-next-fp8
+default_model: qwen3-coder-next
 agents:
   local-agent:
     harness_command:
@@ -21,6 +21,12 @@ agents:
     writablePaths:
       - name: home
         destination: /home/agent
+    network:
+      internal: true
+      proxy:
+        enabled: true
+        allowList:
+        - google.com
   registry-agent:
     harness_command:
       - python

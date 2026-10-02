@@ -36,6 +36,150 @@ func NewClient(baseDir string) (*Client, error) {
 	}, nil
 }
 
+func (c *Client) SetupNetwork(agentName string, networkCfg *config.AgentNetworkConfig) (*ProxyContainerInfo, error) {
+	if !networkCfg.Internal {
+		return nil, nil
+	}
+
+	// Cleanup any existing resources before setting up new ones
+	if err := c.CleanupExistingProxy(agentName); err != nil {
+		log.Error(fmt.Sprintf("Failed to cleanup existing proxy: %v", err))
+	}
+	if err := c.CleanupExistingNetwork(agentName); err != nil {
+		log.Error(fmt.Sprintf("Failed to cleanup existing network: %v", err))
+	}
+
+	networkName := GetNetworkName(agentName)
+
+	// Create internal network
+	if err := CreateInternalNetwork(c, networkName); err != nil {
+		return nil, fmt.Errorf("failed to create internal network: %w", err)
+	}
+
+	// Create proxy container info
+	proxyInfo := &ProxyContainerInfo{
+		Name:        fmt.Sprintf("djinni-proxy-%s", strings.ReplaceAll(agentName, "-", "_")),
+		NetworkName: networkName,
+		SquidPort:   DefaultSquidPort,
+	}
+
+	if networkCfg.Proxy != nil && networkCfg.Proxy.Enabled {
+		// Generate squid config
+		configPath, err := GenerateSquidConfig(
+			true,
+			networkCfg.Proxy.AllowList,
+			DefaultSquidPort,
+			c.BaseDir,
+			"repo",
+			agentName,
+			"task",
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate squid config: %w", err)
+		}
+
+		proxyInfo.SquidConfigPath = configPath
+
+		// Start proxy container
+		if _, err := StartProxyContainer(
+			c,
+			configPath,
+			networkName,
+			proxyInfo.Name,
+			DefaultSquidPort,
+		); err != nil {
+			return nil, fmt.Errorf("failed to start proxy container: %w", err)
+		}
+
+		// Connect proxy to internet (bridge network)
+		if err := ConnectProxyToInternet(c, proxyInfo.Name); err != nil {
+			return nil, fmt.Errorf("failed to connect proxy to internet: %w", err)
+		}
+	}
+
+	return proxyInfo, nil
+}
+
+func (c *Client) CleanupNetwork(proxyInfo *ProxyContainerInfo) error {
+	if proxyInfo == nil {
+		return nil
+	}
+
+	// Remove proxy container
+	if err := RemoveProxyContainer(c, proxyInfo.Name); err != nil {
+		log.Error(fmt.Sprintf("Failed to remove proxy container: %v", err))
+	}
+
+	// Remove internal network
+	if err := RemoveNetwork(c, proxyInfo.NetworkName); err != nil {
+		log.Error(fmt.Sprintf("Failed to remove network: %v", err))
+	}
+
+	// Cleanup proxy config files
+	if proxyInfo.SquidConfigPath != "" {
+		if err := CleanupProxyConfig(c.BaseDir, "repo", "agent", "task"); err != nil {
+			log.Error(fmt.Sprintf("Failed to cleanup proxy config: %v", err))
+		}
+	}
+
+	return nil
+}
+
+// CleanupExistingProxy stops and removes any existing proxy container for the agent
+func (c *Client) CleanupExistingProxy(agentName string) error {
+	proxyContainerName := fmt.Sprintf("djinni-proxy-%s", strings.ReplaceAll(agentName, "-", "_"))
+
+	// Stop the container first if it exists
+	if err := StopProxyContainer(c, proxyContainerName); err != nil {
+		// Container might not exist, which is fine
+		log.Info(fmt.Sprintf("No existing proxy container to stop: %s", proxyContainerName))
+	}
+
+	// Remove the container
+	if err := RemoveProxyContainer(c, proxyContainerName); err != nil {
+		// Container might not exist, which is fine
+		log.Info(fmt.Sprintf("No existing proxy container to remove: %s", proxyContainerName))
+	}
+
+	return nil
+}
+
+// CleanupExistingNetwork removes any existing internal network for the agent
+func (c *Client) CleanupExistingNetwork(agentName string) error {
+	networkName := GetNetworkName(agentName)
+
+	// Disconnect any containers from the network first
+	// Then remove the network
+	if err := RemoveNetwork(c, networkName); err != nil {
+		// Network might not exist, which is fine
+		log.Info(fmt.Sprintf("No existing network to remove: %s", networkName))
+	}
+
+	return nil
+}
+
+// CleanupExistingWorkspace removes any existing workspace for the task
+func (c *Client) CleanupExistingWorkspace(baseDir, agentName, taskName string) error {
+	// Workspace directory pattern used by git.CloneToTemp
+	workspacePattern := filepath.Join(baseDir, "temp-clones", fmt.Sprintf("%s-%s-*", agentName, taskName))
+
+	// Find and remove any matching workspace directories
+	matches, err := filepath.Glob(workspacePattern)
+	if err != nil {
+		return fmt.Errorf("failed to glob workspace pattern: %w", err)
+	}
+
+	for _, match := range matches {
+		if err := os.RemoveAll(match); err != nil {
+			log.Error(fmt.Sprintf("Failed to remove existing workspace %s: %v", match, err))
+		} else {
+			log.Info(fmt.Sprintf("Removed existing workspace: %s", match))
+		}
+	}
+
+	return nil
+}
+
 func (c *Client) RunContainer(image string, cmd []string, name string, mounts []config.Mount, commands *ContainerCommands) (int, error) {
 	if commands == nil {
 		commands = &ContainerCommands{}
@@ -125,7 +269,14 @@ func (c *Client) runCommand(args []string) (int, error) {
 
 func (c *Client) runContainer(image string, cmd []string, name string, mounts []config.Mount, commands *ContainerCommands) (int, error) {
 	entrypoint := c.generateEntrypoint(cmd, commands)
-	args := []string{"run", "--rm", "-it", "--network", "bridge", "--name", name}
+
+	// Determine network mode
+	networkMode := "bridge" // default
+	if commands != nil && commands.Proxy != nil {
+		networkMode = commands.Proxy.NetworkName
+	}
+
+	args := []string{"run", "--rm", "-it", "--network", networkMode, "--name", name}
 
 	if commands == nil || !commands.ForceReadOnlyRootOff {
 		args = append(args, "--read-only")
