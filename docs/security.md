@@ -6,12 +6,12 @@ Djinni provides multiple layers of security isolation for AI agents running in c
 
 ### Container Runtime
 
-Djinni uses **Podman** as the container runtime (see `pkg/docker/client.go:21`). Podman provides:
+Djinni uses **Podman** as the container runtime. Podman provides:
 - Rootless container execution support
 - Built-in user namespace mapping
--SELinux integration without requiring systemd
+- SELinux integration without requiring systemd
 
-All container operations use Podman explicitly (see `pkg/docker/overlay.go:99,127,139`).
+All container operations use Podman explicitly.
 
 ### Volume Mounts with SELinux Labels
 
@@ -30,8 +30,6 @@ The flags mean:
 - `:ro` — Read-only access (only for explicit read-only mounts)
 - `:U` — User namespace mapping (SELinux user mapping)
 
-Mounts are configured in `pkg/docker/client.go:139-147`.
-
 ### Read-Only Root Filesystem
 
 Djinni enables read-only root filesystem by default:
@@ -47,8 +45,6 @@ agents:
       - destination: /cache
         size: "512m"
 ```
-
-控制通过 `forceReadOnlyRootOff: true` 禁用。实现见 `pkg/docker/client.go:125-127`。
 
 **Read-only root prevents:**
 - Container escape attacks modifying system files
@@ -70,7 +66,7 @@ tmpfsMounts:
 - Data automatically cleared on container exit
 - RAM-backed performance for temporary files
 - No host filesystem exposure
-- Size limits prevent memory exhaustion (see `pkg/docker/client.go:129-137`)
+- Size limits prevent memory exhaustion
 
 ### Overlay-Based Writable Paths
 
@@ -96,11 +92,11 @@ agents:
 - Write operations isolated to upper directory
 - Content from image preserved in lower directory
 - Task-specific isolation via upper directory naming
-- Cleanup on task completion (see `pkg/docker/overlay.go:120-144`)
+- Cleanup on task completion
 
 **Implementation details:**
 - Overlay structure created at `{baseDir}/{repo}/{agent}/writablePaths/{name}/`
-- Lower directory populated by copying from container image (see `pkg/docker/overlay.go:60-118`)
+- Lower directory populated by copying from container image
 - Uses `podman unshare` for namespace-aware file operations
 - Temporary container created to extract image content (see `TempContainerName` constant)
 
@@ -117,7 +113,7 @@ files_to_copy:
 **Process:**
 1. Temp mount created at `{baseDir}/{repo}/{agent}/copyMounts/{task}/`
 2. Source files copied to temp mount
-3. Container entrypoint copies files to destinations (see `pkg/docker/client.go:167-175`)
+3. Container entrypoint copies files to destinations
 4. Temp mount cleaned up after execution
 
 **Benefits:**

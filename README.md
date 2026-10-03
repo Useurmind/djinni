@@ -10,22 +10,21 @@ A Go application for running AI agent coding harnesses inside Podman containers 
 go install github.com/useurmind/djinni@latest
 ```
 
-Requires Podman.
+Requires Podman (Docker is not supported).
 
 ### Commands
 
 ```bash
-# Start an agent (requires task name, creates feature/<taskname> branch)
-djinni start <agent-name> --task <task-name>
-
-# Prepare network and build container image (runs prepare + sets up network/proxy)
+# Build container image and prepare network/proxy (if configured)
 djinni prepare <agent-name>
+
+# Start an agent with task (creates feature/<taskname> branch)
+djinni start <agent-name> --task <task-name>
+  --cmd <command>    Override harness command
+  --rm               Delete workspace and overlay on exit
 
 # Clean up network and proxy containers
 djinni clean
-
-# Enable debug mode
-djinni --debug
 ```
 
 ### Configuration
@@ -123,6 +122,7 @@ See [Configuration Guide](docs/configuration.md#agent-configurations) for detail
 | `git_workspace` | Git workspace configuration for task-based work |
 | `sync_approach` | How to sync changes back: `none`, `gitpatch`, `automerge` |
 | `autodelete_agent_branch` | Auto-delete feature branch after sync |
+| `delete_on_exit` | Delete workspace and overlay on exit: `none` or `all` |
 | `forceReadOnlyRootOff` | Disable read-only root filesystem |
 | `tmpfsMounts` | Tmpfs mounts for writable paths in read-only mode |
 | `default_model` | Override default LLM model for this agent |
@@ -152,7 +152,7 @@ network:
 ### Workflow
 
 1. Define agents in `.djinni.yml`
-2. Run `djinni prepare <name>` to set up network and proxy (if configured)
+2. Run `djinni prepare <name>` to build container image (sets up network/proxy if configured)
 3. Run `djinni start <name> --task <task>` to execute
 4. Agent runs in container, makes changes to git working directory
 5. Changes are committed and pushed to `feature/<task>` branch
@@ -174,6 +174,7 @@ See [Security and Isolation](docs/security.md) for detailed documentation on con
 - **Environment configuration**: Secure environment variable injection
 - **Network isolation**: Internal network support with optional Squid proxy
 - **Proxy control**: ACL-based access control for outbound traffic
+- **Read-only filesystem**: Default read-only root filesystem for enhanced security
 
 ## License
 

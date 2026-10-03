@@ -188,6 +188,8 @@ network:
 
 When network isolation is enabled, the agent container runs in an internal network and all outbound traffic must pass through the Squid proxy. The proxy uses ACLs to control which domains can be accessed.
 
+#### `tmpfsMounts` ([]TmpfsMount, optional)
+
 Configure tmpfs (RAM-backed) mounts for the container. Useful for /tmp and other directories that need write access in read-only mode.
 
 **TmpfsMount Fields:**
@@ -201,6 +203,71 @@ tmpfsMounts:
   - destination: /tmp
   - destination: /cache
     size: "512m"
+```
+
+#### `writablePaths` ([]WritablePath, optional)
+
+Specify paths that should be writable using overlayfs. Each writable path has content from the container image's directory at that location.
+
+**WritablePath Fields:**
+
+- `name` (string) **Required**: Unique identifier for this writable path
+- `destination` (string) **Required**: Path inside the container
+
+**Example:**
+```yaml
+writablePaths:
+  - name: home
+    destination: /home/agent
+  - name: data
+    destination: /app/data
+```
+
+#### `autodelete_agent_branch` (bool, optional)
+
+Automatically delete the feature branch after sync completes. Default is `false`.
+
+**Example:**
+```yaml
+autodelete_agent_branch: true
+```
+
+#### `delete_on_exit` (string, optional)
+
+Controls what gets deleted when the agent container exits.
+
+**Valid values:**
+- `none`: Keep everything (default)
+- `all`: Delete workspace, overlay upperdir, and workdir on exit
+
+**Example:**
+```yaml
+delete_on_exit: all
+```
+
+#### `files_to_copy` ([]FilesToCopy)
+
+Files to copy into the container (e.g., `.gitconfig`, SSH keys). Unlike mounts, these are copied once at startup.
+
+**FilesToCopy Fields:**
+
+- `source` (string) **Required**: Path on the host machine
+- `destination` (string) **Required**: Path inside the container
+
+**Example:**
+```yaml
+files_to_copy:
+  - source: ~/.gitconfig
+    destination: /home/agent/.gitconfig
+```
+
+#### `default_model` (string, optional)
+
+Override the global `default_model` for this specific agent.
+
+**Example:**
+```yaml
+default_model: gpt-4
 ```
 
 ## Global Configuration (`~/.config/djinni/config.yaml`)
@@ -282,7 +349,7 @@ modelProviders:
 
 ```yaml
 agents:
- 简单的agent:
+  simple-agent:
     harness_command:
       - echo
       - hello

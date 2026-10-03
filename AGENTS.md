@@ -27,10 +27,12 @@ A task is complete only when all four succeed.
 | `pkg/container` | Podman client, network setup, proxy management |
 | `pkg/config` | Configuration types and validation |
 | `pkg/ai` | Agent execution and LLM integration |
-| `pkg/git` | Git operations (moved to `pkg/ui`) |
+| `pkg/git` | Git operations (see note below) |
 | `pkg/ui` | User interaction and prompts |
 | `pkg/log` | Logging infrastructure |
 | `pkg/utils` | Utility functions |
+
+**Note on pkg/git**: The git package was moved to `pkg/git/commit.go`, `pkg/git/diff.go` for git operations.
 
 ### Network and Proxy Lifecycle
 
