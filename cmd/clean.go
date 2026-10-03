@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/useurmind/djinni/pkg/config"
+	container "github.com/useurmind/djinni/pkg/container"
 	"github.com/useurmind/djinni/pkg/log"
 )
 
@@ -29,6 +30,39 @@ func runClean(cmd *cobra.Command, args []string) error {
 	globalCfg, err := config.LoadGlobalConfig()
 	if err != nil {
 		return fmt.Errorf("failed to load global config: %w", err)
+	}
+
+	configPath, _ := cmd.Flags().GetString("config")
+	cfg, err := config.LoadConfig(configPath)
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	// Cleanup network and proxy containers for all agents before cleaning storage
+	log.Info("Cleaning up network and proxy containers...")
+	for agentName := range cfg.Agents {
+		client, err := container.NewClient(globalCfg.StorageBaseDirectory)
+		if err != nil {
+			log.Error(fmt.Sprintf("Failed to initialize container client for agent %s: %v", agentName, err))
+			continue
+		}
+
+		networkName := container.GetNetworkName(agentName)
+		proxyContainerName := fmt.Sprintf("djinni-proxy-%s", strings.ReplaceAll(agentName, "-", "_"))
+
+		// Remove proxy container
+		if err := container.RemoveProxyContainer(client, proxyContainerName); err != nil {
+			log.Error(fmt.Sprintf("Failed to remove proxy container %s: %v", proxyContainerName, err))
+		} else {
+			log.Info(fmt.Sprintf("Removed proxy container: %s", proxyContainerName))
+		}
+
+		// Remove internal network
+		if err := container.RemoveNetwork(client, networkName); err != nil {
+			log.Error(fmt.Sprintf("Failed to remove network %s: %v", networkName, err))
+		} else {
+			log.Info(fmt.Sprintf("Removed network: %s", networkName))
+		}
 	}
 
 	baseDir := globalCfg.StorageBaseDirectory

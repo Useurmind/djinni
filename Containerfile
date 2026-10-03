@@ -23,6 +23,9 @@ USER agent
 
 WORKDIR /home/agent
 
+# sometimes the agent tries to put its plan here
+RUN mkdir -p /home/agent/.opencode/plan
+
 RUN bash -c 'echo "export PATH=$PATH:/home/agent/go/bin" >> /home/agent/.bashrc'
 
 RUN curl -LsSf https://raw.githubusercontent.com/ast2llm/ast2llm-go/main/install.sh | sh

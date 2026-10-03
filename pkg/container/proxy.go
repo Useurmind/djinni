@@ -67,10 +67,10 @@ func GenerateSquidConfig(enabled bool, allowList []string, port int, baseDir, re
 	}
 
 	// Allow access to standard web ports
-	builder.WriteString("http_access allow SSL_ports\n")
+	// builder.WriteString("http_access allow SSL_ports\n")
 
 	// Catch-all allow for any remaining traffic
-	builder.WriteString("http_access allow all\n")
+	builder.WriteString("http_access deny all\n")
 	builder.WriteString("\n")
 
 	// Cache settings
