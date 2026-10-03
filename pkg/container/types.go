@@ -10,4 +10,5 @@ type ProxyContainerInfo struct {
 	NetworkName     string
 	SquidPort       int
 	SquidConfigPath string
+	SquidAddress    string
 }

@@ -16,4 +16,5 @@ type ContainerCommands struct {
 	WritablePaths        []config.WritablePath
 	TempMount            *TempMount
 	Proxy                *ProxyContainerInfo
+	EnvVars              map[string]string
 }

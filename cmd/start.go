@@ -284,6 +284,16 @@ func prepareWorkspace(client *container.Client, agentCfg *config.AgentConfig, cw
 
 	commands.Proxy = proxyInfo
 
+	// Set proxy environment variables if proxy is configured
+	if proxyInfo != nil && proxyInfo.SquidPort != 0 {
+		if commands.EnvVars == nil {
+			commands.EnvVars = make(map[string]string)
+		}
+		commands.EnvVars["HTTP_PROXY"] = fmt.Sprintf("http://%s:%d", proxyInfo.Name, proxyInfo.SquidPort)
+		commands.EnvVars["HTTPS_PROXY"] = fmt.Sprintf("http://%s:%d", proxyInfo.Name, proxyInfo.SquidPort)
+		commands.EnvVars["NO_PROXY"] = "localhost,127.0.0.1"
+	}
+
 	for _, fc := range agentCfg.FilesToCopy {
 		commands.FilesToCopy = append(commands.FilesToCopy, config.FilesToCopy{
 			Source:      fc.Source,

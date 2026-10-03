@@ -95,6 +95,9 @@ func (c *Client) SetupNetwork(agentName string, networkCfg *config.AgentNetworkC
 		if err := ConnectProxyToInternet(c, proxyInfo.Name); err != nil {
 			return nil, fmt.Errorf("failed to connect proxy to internet: %w", err)
 		}
+
+		// Use container name as address (Podman DNS resolves container names)
+		proxyInfo.SquidAddress = proxyInfo.Name
 	}
 
 	return proxyInfo, nil
@@ -284,6 +287,13 @@ func (c *Client) runContainer(image string, cmd []string, name string, mounts []
 	}
 
 	args := []string{"run", "--rm", "-it", "--network", networkMode, "--name", name}
+
+	// Add environment variables from commands
+	if commands.EnvVars != nil {
+		for key, value := range commands.EnvVars {
+			args = append(args, "-e", fmt.Sprintf("%s=%s", key, value))
+		}
+	}
 
 	if commands == nil || !commands.ForceReadOnlyRootOff {
 		args = append(args, "--read-only")
