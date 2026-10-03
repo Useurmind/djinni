@@ -49,9 +49,18 @@ func GenerateSquidConfig(enabled bool, allowList []string, port int, baseDir, re
 	// HTTP access rules
 	builder.WriteString("# HTTP access rules\n")
 	builder.WriteString("http_access deny all\n") // Default deny
+
+	// Allow access to configured domains
 	for i := range allowList {
 		fmt.Fprintf(&builder, "http_access allow allowed_%d\n", i)
 	}
+
+	// Allow CONNECT for HTTPS (ssl_ports)
+	builder.WriteString("acl SSL_ports port 443\n")
+	builder.WriteString("http_access allow SSL_ports\n")
+
+	// Catch-all allow for any remaining traffic (needed for CONNECT tunnel)
+	builder.WriteString("http_access allow all\n")
 	builder.WriteString("\n")
 
 	// Cache settings
