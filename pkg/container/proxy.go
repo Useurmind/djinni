@@ -37,6 +37,13 @@ func GenerateSquidConfig(enabled bool, allowList []string, port int, baseDir, re
 
 	// ACL definitions based on allow list
 	builder.WriteString("# ACL definitions\n")
+
+	// Define SSL ports ACL first (must be before http_access rules that use it)
+	builder.WriteString("acl SSL_ports port 443\n")
+	builder.WriteString("acl Safe_ports port 80\n")
+	builder.WriteString("acl Safe_ports port 443\n")
+	builder.WriteString("\n")
+
 	for i, allowedURL := range allowList {
 		// Extract domain from URL if possible
 		domain := extractDomain(allowedURL)
@@ -48,18 +55,16 @@ func GenerateSquidConfig(enabled bool, allowList []string, port int, baseDir, re
 
 	// HTTP access rules
 	builder.WriteString("# HTTP access rules\n")
-	builder.WriteString("http_access deny all\n") // Default deny
 
-	// Allow access to configured domains
+	// Allow access to configured domains (from allowList)
 	for i := range allowList {
 		fmt.Fprintf(&builder, "http_access allow allowed_%d\n", i)
 	}
 
-	// Allow CONNECT for HTTPS (ssl_ports)
-	builder.WriteString("acl SSL_ports port 443\n")
+	// Allow access to standard web ports
 	builder.WriteString("http_access allow SSL_ports\n")
 
-	// Catch-all allow for any remaining traffic (needed for CONNECT tunnel)
+	// Catch-all allow for any remaining traffic
 	builder.WriteString("http_access allow all\n")
 	builder.WriteString("\n")
 
