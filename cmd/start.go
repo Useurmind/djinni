@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -120,19 +121,6 @@ func runStartAgent(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to initialize container client: %w", err)
 	}
 
-	// Cleanup any existing resources for this agent before starting
-	if err := client.CleanupExistingProxy(agentName); err != nil {
-		log.Error(fmt.Sprintf("Failed to cleanup existing proxy: %v", err))
-	}
-	if err := client.CleanupExistingNetwork(agentName); err != nil {
-		log.Error(fmt.Sprintf("Failed to cleanup existing network: %v", err))
-	}
-	if taskName != "" {
-		if err := client.CleanupExistingWorkspace(baseDir, agentName, taskName); err != nil {
-			log.Error(fmt.Sprintf("Failed to cleanup existing workspace: %v", err))
-		}
-	}
-
 	image, commands, workspacePath, err := prepareWorkspace(client, agentCfg, cwd, agentName, taskName, baseDir)
 	if err != nil {
 		return err
@@ -152,19 +140,9 @@ func runStartAgent(cmd *cobra.Command, args []string) error {
 	}, 0, len(commands.WritablePaths))
 	successCount := 0
 
-	proxyInfo := commands.Proxy
-
 	deleteOnExit := "none"
-	workspaceCleanupNeeded := false
 	// Defer cleanup to run when function exits, regardless of how it exits
 	defer func() {
-		// Cleanup network and proxy first (before overlay cleanup)
-		if proxyInfo != nil {
-			if err := client.CleanupNetwork(proxyInfo); err != nil {
-				log.Error(fmt.Sprintf("Failed to cleanup network: %v", err))
-			}
-		}
-
 		for i := 0; i < successCount; i++ {
 			mp := overlayMounts[i]
 			if err := container.UnmountOverlay(mp.mountPath); err != nil {
@@ -176,15 +154,6 @@ func runStartAgent(cmd *cobra.Command, args []string) error {
 				if err := container.CleanupOverlay(baseDir, repoName, agentName, mp.wpName, taskName); err != nil {
 					log.Error(fmt.Sprintf("Failed to cleanup overlay at %s: %v", mp.mountPath, err))
 				}
-			}
-		}
-
-		if workspaceCleanupNeeded {
-			log.Info("Deleting workspace...")
-			if err := os.RemoveAll(workspacePath); err != nil {
-				log.Error(fmt.Sprintf("Failed to delete workspace %s: %v", workspacePath, err))
-			} else {
-				log.Info(fmt.Sprintf("Deleted workspace: %s", workspacePath))
 			}
 		}
 	}()
@@ -249,7 +218,6 @@ func runStartAgent(cmd *cobra.Command, args []string) error {
 			log.Error(fmt.Sprintf("Post-execution failed: %v", err))
 			return fmt.Errorf("failed to handle post-execution: %w", err)
 		}
-		workspaceCleanupNeeded = true
 	}
 
 	return nil
@@ -258,27 +226,18 @@ func runStartAgent(cmd *cobra.Command, args []string) error {
 func prepareWorkspace(client *container.Client, agentCfg *config.AgentConfig, cwd, agentName, taskName, baseDir string) (string, *container.ContainerCommands, string, error) {
 	log.Info("Setting up workspace...")
 
-	// Setup network before container creation
-	proxyInfo, err := client.SetupNetwork(agentName, &agentCfg.Network)
-	if err != nil {
-		return "", nil, "", fmt.Errorf("failed to setup network: %w", err)
-	}
-
 	repoName, err := git.GetRepoName(cwd)
 	if err != nil {
-		// Cleanup network on error
-		if proxyInfo != nil {
-			_ = client.CleanupNetwork(proxyInfo)
-		}
 		return "", nil, "", fmt.Errorf("failed to get repo name: %w", err)
+	}
+
+	proxyInfo, err := loadProxyInfo(agentCfg, repoName, agentName)
+	if err != nil {
+		return "", nil, "", fmt.Errorf("failed to load proxy info: %w", err)
 	}
 
 	image, commands, workspacePath, err := setupWorkspace(agentCfg, cwd, repoName, agentName, taskName)
 	if err != nil {
-		// Cleanup network on error
-		if proxyInfo != nil {
-			_ = client.CleanupNetwork(proxyInfo)
-		}
 		return "", nil, "", err
 	}
 
@@ -665,6 +624,28 @@ func generateCommitMessage(workingDir, defaultModel string) (string, error) {
 	}
 
 	return strings.TrimSpace(commitMsg), nil
+}
+
+func loadProxyInfo(agentCfg *config.AgentConfig, repoName, agentName string) (*container.ProxyContainerInfo, error) {
+	proxyInfoPath := filepath.Join(
+		agentCfg.GitWorkspace.BaseDirectory,
+		"proxyInfo",
+		repoName,
+		agentName,
+		"proxy.json",
+	)
+	data, err := os.ReadFile(proxyInfoPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var proxyInfo container.ProxyContainerInfo
+	if err := json.Unmarshal(data, &proxyInfo); err != nil {
+		return nil, err
+	}
+	return &proxyInfo, nil
 }
 
 func init() {

@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"github.com/useurmind/djinni/pkg/config"
@@ -62,6 +64,44 @@ var prepareCmd = &cobra.Command{
 			if exitCode != 0 {
 				os.Exit(exitCode)
 				return nil
+			}
+		}
+
+		// Setup network and proxy for the agent
+		log.Info("Setting up network and proxy...")
+		if agentCfg.Network.Internal {
+			// Cleanup any existing network and proxy first for idempotency
+			if err := client.CleanupExistingProxy(agentName); err != nil {
+				return fmt.Errorf("failed to cleanup existing proxy: %w", err)
+			}
+			if err := client.CleanupExistingNetwork(agentName); err != nil {
+				return fmt.Errorf("failed to cleanup existing network: %w", err)
+			}
+
+			// Setup new network and proxy
+			proxyInfo, err := client.SetupNetwork(agentName, &agentCfg.Network)
+			if err != nil {
+				return fmt.Errorf("failed to setup network: %w", err)
+			}
+
+			// Save proxy info to file if proxy is configured
+			if proxyInfo != nil && proxyInfo.SquidAddress != "" {
+				proxyDir := filepath.Join(agentCfg.GitWorkspace.BaseDirectory, "proxyInfo", repoName, agentName)
+				if err := os.MkdirAll(proxyDir, 0755); err != nil {
+					return fmt.Errorf("failed to create proxy info directory: %w", err)
+				}
+
+				proxyFilePath := filepath.Join(proxyDir, "proxy.json")
+				proxyData, err := json.MarshalIndent(proxyInfo, "", "  ")
+				if err != nil {
+					return fmt.Errorf("failed to marshal proxy info: %w", err)
+				}
+
+				if err := os.WriteFile(proxyFilePath, proxyData, 0644); err != nil {
+					return fmt.Errorf("failed to write proxy info: %w", err)
+				}
+
+				log.Info(fmt.Sprintf("Proxy info saved to: %s", proxyFilePath))
 			}
 		}
 
