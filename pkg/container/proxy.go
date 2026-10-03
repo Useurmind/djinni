@@ -145,7 +145,7 @@ func ConnectProxyToInternet(client *Client, proxyContainerName string) error {
 
 // StopProxyContainer stops the Squid proxy container
 func StopProxyContainer(client *Client, proxyContainerName string) error {
-	args := []string{"stop", proxyContainerName}
+	args := []string{"stop", "-t", "1", proxyContainerName}
 
 	cmd := exec.Command(client.Binary, args...)
 	output, err := cmd.CombinedOutput()
