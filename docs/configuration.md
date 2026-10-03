@@ -188,6 +188,16 @@ network:
 
 When network isolation is enabled, the agent container runs in an internal network and all outbound traffic must pass through the Squid proxy. The proxy uses ACLs to control which domains can be accessed.
 
+### Proxy Configuration
+
+When a proxy is configured, information is persisted to `{baseDir}/proxyInfo/{repo}/{agent}/proxy.json` with the following structure:
+
+- `Name`: Proxy container name (e.g., `djinni-proxy-agentname`)
+- `NetworkName`: Internal network name (e.g., `djinni-ai-agentname`)
+- `SquidPort`: Squid proxy port (default: 3128)
+- `SquidAddress`: Proxy container address (for internal network communication)
+- `SquidConfigPath`: Path to the generated Squid configuration file
+
 #### `tmpfsMounts` ([]TmpfsMount, optional)
 
 Configure tmpfs (RAM-backed) mounts for the container. Useful for /tmp and other directories that need write access in read-only mode.

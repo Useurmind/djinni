@@ -15,7 +15,7 @@ Requires Podman (Docker is not supported).
 ### Commands
 
 ```bash
-# Build container image and prepare network/proxy (if configured)
+# Prepare network/proxy and build container image (if configured)
 djinni prepare <agent-name>
 
 # Start an agent with task (creates feature/<taskname> branch)
@@ -23,7 +23,11 @@ djinni start <agent-name> --task <task-name>
   --cmd <command>    Override harness command
   --rm               Delete workspace and overlay on exit
 
-# Clean up network and proxy containers
+# Attach to a running agent container
+djinni attach <agent-name>
+  --cmd <command>    Command to execute in container (default: bash)
+
+# Clean up network and proxy containers, and remove storage
 djinni clean
 ```
 

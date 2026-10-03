@@ -14,8 +14,8 @@ A task is complete only when all four succeed.
 
 ## Architecture notes
 
-- **Main entrypoint**: `main.go` → `cmd.Execute()` → root Cobra command
-- **Agent execution**: `pkg/ai/agent.go:Execute()` reads git changes, generates commit messages via LLM
+- **Main entrypoint**: `main.go` → `cmd.Execute()` → root Cobra command with subcommands (`start`, `prepare`, `attach`, `clean`)
+- **Agent execution**: `pkg/ai/agent.go:Execute()` reads git changes via `GetChangedFilesWithDiffs()`, generates commit messages via LLM
 - **Container runtime**: Uses `podman` exclusively (see `pkg/container/client.go:NewClient()`)
 - **Config file**: `.djinni.yml` defines agents with `harness_command`, `image`/`containerfile`, and mounts
 - **Network isolation**: Optional internal network with Squid proxy for agent internet access control
@@ -32,12 +32,12 @@ A task is complete only when all four succeed.
 | `pkg/log` | Logging infrastructure |
 | `pkg/utils` | Utility functions |
 
-**Note on pkg/git**: The git package was moved to `pkg/git/commit.go`, `pkg/git/diff.go` for git operations.
+**Note on pkg/git**: The git package contains multiple files for git operations: `commit.go`, `diff.go`, `push.go`, `status.go`, `sync.go`, `workspace.go`.
 
 ### Network and Proxy Lifecycle
 
 1. **Network Setup** (`pkg/container/network.go`):
-   - Creates internal bridge network `djinni-ai-{agentName}`
+   - Creates internal bridge network `djinni-ai-{agentName}` (hyphens replaced with underscores)
    - Handles network cleanup and removal
 
 2. **Proxy Setup** (`pkg/container/proxy.go`):
@@ -57,10 +57,10 @@ A task is complete only when all four succeed.
 
 ## Key conventions
 
-1. **Git tools**: `GitChangedFilesTool` in `pkg/ai/tools.go` returns diffs for all changed files; returns "No changes detected." if repo is clean
+1. **Git tools**: `GetChangedFilesWithDiffs()` in `pkg/git/diff.go` returns diffs for all changed files; returns "No changes detected." if repo is clean
 2. **Test package**: `testify/assert` for assertions; use `require.NoError(t, err, "descriptive message")` for errors
 3. **Test scope**: Skip tests that only verify struct field access—assume that works
-4. **Mount paths in Podman**: Source → destination; use `:Z` (rw) or `:Zro` (ro) SELinux labels
+4. **Mount paths in Podman**: Source → destination; use `:Z,ro,U` (read-only) or `:Z,U` (read-write) SELinux labels
 5. **Code Documentation**: Add documentation to structs, struct fields (especially in the config package) and funcs (especially public funcs)
 6. **Code structure**: 
     - Dont make them too long/short, strive to keep functions on single abstraction levels and extract code to new funcs if the abstraction level does not match the current function.
