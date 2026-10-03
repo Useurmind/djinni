@@ -18,8 +18,11 @@ Requires Podman.
 # Start an agent (requires task name, creates feature/<taskname> branch)
 djinni start <agent-name> --task <task-name>
 
-# Build a local container image from Containerfile
+# Prepare network and build container image (runs prepare + sets up network/proxy)
 djinni prepare <agent-name>
+
+# Clean up network and proxy containers
+djinni clean
 
 # Enable debug mode
 djinni --debug
@@ -40,6 +43,13 @@ agents:
       - opencode
     containerfile: ./Containerfile
     # sync_approach: git_patch
+    network:
+      internal: true
+      proxy:
+        enabled: true
+        allowList:
+          - github.com
+          - google.com
     mounts:
       # for opencode you must provide all folders including the database folder
       # while agent is running it is chowned to the podman user, later it is chowned back to you
@@ -116,14 +126,38 @@ See [Configuration Guide](docs/configuration.md#agent-configurations) for detail
 | `forceReadOnlyRootOff` | Disable read-only root filesystem |
 | `tmpfsMounts` | Tmpfs mounts for writable paths in read-only mode |
 | `default_model` | Override default LLM model for this agent |
+| `network.internal` | Enable internal network isolation for agent |
+| `network.proxy.enabled` | Enable HTTP proxy via Squid for agent |
+| `network.proxy.allowList` | Domains allowed through proxy (via Squid ACL) |
+
+### Network Isolation
+
+Agents can be configured with internal network isolation and HTTP proxy control:
+
+- **Internal Network**: Creates an isolated network for the agent (prevents direct internet access)
+- **HTTP Proxy**: Squid proxy sits between agent and internet with ACL-based access control
+- **Proxy Environment Variables**: Agent container automatically configured with proxy environment variables
+
+**Example:**
+```yaml
+network:
+  internal: true
+  proxy:
+    enabled: true
+    allowList:
+      - github.com
+      - google.com
+```
 
 ### Workflow
 
 1. Define agents in `.djinni.yml`
-2. Run `djinni start <name> --task <task>` to execute
-3. Agent runs in container, makes changes to git working directory
-4. Changes are committed and pushed to `feature/<task>` branch
-5. Changes sync back per `sync_approach` setting
+2. Run `djinni prepare <name>` to set up network and proxy (if configured)
+3. Run `djinni start <name> --task <task>` to execute
+4. Agent runs in container, makes changes to git working directory
+5. Changes are committed and pushed to `feature/<task>` branch
+6. Changes sync back per `sync_approach` setting
+7. Run `djinni clean` to remove network and proxy containers
 
 ## Overview
 
@@ -138,6 +172,8 @@ See [Security and Isolation](docs/security.md) for detailed documentation on con
 - **Container isolation**: Each agent runs in a separate Podman container
 - **Resource management**: CPU/memory limits per agent
 - **Environment configuration**: Secure environment variable injection
+- **Network isolation**: Internal network support with optional Squid proxy
+- **Proxy control**: ACL-based access control for outbound traffic
 
 ## License
 

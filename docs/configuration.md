@@ -159,7 +159,34 @@ forceReadOnlyRootOff: false
 
 When using read-only mode, you can specify writable paths using `tmpfsMounts` and regular mounts.
 
-#### `tmpfsMounts` ([]TmpfsMount, optional)
+#### `network` (AgentNetworkConfig, optional)
+
+Configure internal network isolation and HTTP proxy for the agent.
+
+**AgentNetworkConfig Fields:**
+
+- `internal` (bool, optional): Enable internal network isolation (default: `false`)
+- `proxy` (ProxyConfig, optional): HTTP proxy configuration (requires `internal: true`)
+
+**ProxyConfig Fields:**
+
+- `enabled` (bool, optional): Enable HTTP proxy via Squid (default: `false`)
+- `allowList` ([]string, optional): Domains allowed through proxy (default: no restrictions)
+- `image` (string, optional): Custom proxy container image (default: `docker.io/ubuntu/squid:latest`)
+
+**Example:**
+```yaml
+network:
+  internal: true
+  proxy:
+    enabled: true
+    allowList:
+      - github.com
+      - google.com
+      - example.com
+```
+
+When network isolation is enabled, the agent container runs in an internal network and all outbound traffic must pass through the Squid proxy. The proxy uses ACLs to control which domains can be accessed.
 
 Configure tmpfs (RAM-backed) mounts for the container. Useful for /tmp and other directories that need write access in read-only mode.
 
@@ -292,7 +319,40 @@ agents:
     files_to_copy:
       - source: ~/.gitconfig
         destination: /home/agent/.gitconfig
+
+### Agent with Proxy Isolation
+
+```yaml
+default_model: qwen-qwen3-coder-next-fp8
+
+agents:
+  proxy-agent:
+    harness_command:
+      - opencode
+    containerfile: ./Containerfile
+    default_model: qwen-qwen3-coder-next-fp8
+    network:
+      internal: true
+      proxy:
+        enabled: true
+        allowList:
+          - github.com
+          - gitlab.com
+          - google.com
+    mounts:
+      - source: ~/.config/opencode
+        destination: /home/agent/.config/opencode
+    tmpfsMounts:
+      - destination: /tmp
+      - destination: /cache
+        size: "512m"
 ```
+
+This configuration creates an isolated agent with:
+- **Internal network**: Agent cannot access internet directly
+- **Squid proxy**: All outbound traffic routed through proxy
+- **ACL allowlist**: Only github.com, gitlab.com, and google.com can be accessed
+- **Proxy environment variables**: Agent container configured with HTTP_PROXY, HTTPS_PROXY, NO_PROXY
 
 ## Validation Rules
 
@@ -305,6 +365,8 @@ Djinni validates configuration files on load. Key validation rules:
 5. `sync_approach` must be one of: `none`, `gitpatch`, `automerge`
 6. Model provider name cannot be empty
 7. Model provider must have at least one model defined
+8. If `network.internal` is `true`, agent name must only contain alphanumeric characters, hyphens, and underscores
+9. Proxy image must be fully-qualified (no short names like `ubuntu`, must be `docker.io/library/ubuntu:latest`)
 
 ## File Locations
 

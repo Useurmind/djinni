@@ -145,19 +145,58 @@ agents:
 - Isolated from host filesystem
 - Typically mounted as tmpfs or overlay path
 
-### Network Isolation
+### Internal Network and Proxy Isolation
 
-Djinni uses **bridge networking** (hardcoded, see `pkg/docker/client.go:123`):
+Djinni supports **internal network isolation** with optional **HTTP proxy control**:
 
-```go
-args := []string{"run", "--rm", "-it", "--network", "bridge", "--name", name}
+```yaml
+network:
+  internal: true
+  proxy:
+    enabled: true
+    allowList:
+      - github.com
+      - google.com
 ```
 
-**Implications:**
-- Containers cannot access host services directly
-- No container-to-container communication
-- Outbound access limited to bridge interface
-- No host network mode available
+**Components:**
+- **Internal Network**: Creates isolated bridge network `djinni-ai-{agentName}`
+- **Proxy Container**: Runs Squid proxy on port 3128
+- **Proxy Network**: Connects proxy to both internal and bridge networks
+
+**Traffic Flow:**
+```
+Agent Container → Internal Network → Squid Proxy → Bridge Network → Internet
+```
+
+**Security Benefits:**
+- Agent cannot access internet directly
+- All outbound traffic must pass through Squid proxy
+- ACL-based access control via `allowList`
+- CONNECT tunneling support for HTTPS traffic
+
+**Squid Configuration:**
+- ACL definitions must be ordered before http_access rules
+- SSL ports ACL for port 443 (HTTPS CONNECT)
+- Safe ports ACL for ports 80 (HTTP) and 443 (HTTPS)
+- Explicit allow rules for configured domains
+- Catch-all deny for unauthorized access
+
+**Proxy Environment Variables:**
+Agent containers automatically receive:
+- `HTTP_PROXY=http://proxy-container-name:3128`
+- `HTTPS_PROXY=http://proxy-container-name:3128`
+- `NO_PROXY=localhost,127.0.0.1`
+
+**Implementation Details:**
+- Network and proxy setup handled by `pkg/container/network.go`
+- Proxy container lifecycle managed by `pkg/container/proxy.go`
+- Proxy info persisted to `{baseDir}/proxyInfo/{repo}/{agent}/proxy.json`
+- Cleanup handled by `pkg/container/client.go` cleanup methods
+
+**Requirements:**
+- Agent name must only contain alphanumeric characters, hyphens, and underscores
+- Proxy image must be fully-qualified (e.g., `docker.io/ubuntu/squid:latest`)
 
 ## Security Model Summary
 
@@ -171,6 +210,8 @@ Djinni's security model focuses on:
 | Root filesystem | Read-only by default | Prevent filesystem modifications |
 | Writable paths | Overlayfs (upper/lower/work) | Isolated writable storage |
 | Network isolation | Bridge network (hardcoded) | Restrict container communications |
+| Internal network | Isolated bridge network | Prevent direct internet access |
+| Proxy isolation | Squid ACL-based proxy | Control outbound traffic |
 | File copying | Temporary mount + copy | Static file snapshots |
 | Namespace isolation | User namespace mapping | Isolate from host UIDs/GIDs |
 | Temporary storage | Tmpfs mounts | Secure in-memory storage |
@@ -233,7 +274,32 @@ agents:
 
 Djinni enforces bridge networking. Avoid requiring host network access.
 
-### 6. Resource Limits
+### 6. Proxy Isolation
+
+Enable proxy isolation for agents that should not have direct internet access:
+
+```yaml
+agents:
+  secure-agent:
+    harness_command: [opencode]
+    containerfile: ./Containerfile
+    network:
+      internal: true
+      proxy:
+        enabled: true
+        allowList:
+          - github.com
+          - gitlab.com
+          - example.com
+```
+
+**Benefits:**
+- Agent cannot access internet directly
+- All outbound traffic routed through Squid proxy
+- ACL-based access control via allowlist
+- HTTPS CONNECT tunneling supported
+
+### 7. Resource Limits
 
 Configure CPU/memory limits at Podman level when running Djinni:
 

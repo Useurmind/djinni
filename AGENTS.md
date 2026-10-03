@@ -16,8 +16,40 @@ A task is complete only when all four succeed.
 
 - **Main entrypoint**: `main.go` → `cmd.Execute()` → root Cobra command
 - **Agent execution**: `pkg/ai/agent.go:Execute()` reads git changes, generates commit messages via LLM
-- **Container runtime**: Uses `podman` exclusively (see `pkg/docker/client.go:NewClient()`)
+- **Container runtime**: Uses `podman` exclusively (see `pkg/container/client.go:NewClient()`)
 - **Config file**: `.djinni.yml` defines agents with `harness_command`, `image`/`containerfile`, and mounts
+- **Network isolation**: Optional internal network with Squid proxy for agent internet access control
+
+### Package Structure
+
+| Package | Purpose |
+|---------|---------|
+| `pkg/container` | Podman client, network setup, proxy management |
+| `pkg/config` | Configuration types and validation |
+| `pkg/ai` | Agent execution and LLM integration |
+| `pkg/git` | Git operations (moved to `pkg/ui`) |
+| `pkg/ui` | User interaction and prompts |
+| `pkg/log` | Logging infrastructure |
+| `pkg/utils` | Utility functions |
+
+### Network and Proxy Lifecycle
+
+1. **Network Setup** (`pkg/container/network.go`):
+   - Creates internal bridge network `djinni-ai-{agentName}`
+   - Handles network cleanup and removal
+
+2. **Proxy Setup** (`pkg/container/proxy.go`):
+   - Generates Squid configuration with ACL rules
+   - Starts proxy container connected to internal network
+   - Connects proxy to bridge network for internet access
+
+3. **Environment Configuration** (`pkg/container/client.go`):
+   - Sets `HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY` environment variables
+   - Proxy info persisted to `{baseDir}/proxyInfo/{repo}/{agent}/proxy.json`
+
+4. **Cleanup** (`cmd/clean.go`):
+   - Stops and removes proxy containers
+   - Removes internal networks
 
 ---
 
@@ -38,13 +70,15 @@ A task is complete only when all four succeed.
 1. Changes in `./...`
 2. `make build` creates `./bin/djinni`
 3. Run config via `./bin/djinni` (reads `.djinni.yml`)
-4. Agents execute in containers via `pkg/docker` client
+4. Agents execute in containers via `pkg/container` client
+5. Network/proxy setup/teardown handled automatically
 
 ---
 
 ## Dependencies
 
-- Go 1.25.0
+- Go 1.26.0
 - `github.com/stretchr/testify` v1.10.0 (test assertions)
 - `github.com/tmc/langchaingo` v0.1.14 (LLM integration)
 - `github.com/spf13/cobra` v1.8.1 (CLI)
+- `github.com/uber-go/zap` (logging)

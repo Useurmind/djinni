@@ -117,15 +117,6 @@ func extractDomain(url string) string {
 	return url
 }
 
-// CleanupProxyConfig cleans up generated proxy configuration files
-func CleanupProxyConfig(baseDir, repoName, agentName, taskName string) error {
-	tempDir := filepath.Join(baseDir, "proxyConfig", repoName, agentName, taskName)
-	if err := os.RemoveAll(tempDir); err != nil {
-		return fmt.Errorf("failed to cleanup proxy config: %w", err)
-	}
-	return nil
-}
-
 // StartProxyContainer creates and starts the Squid proxy container
 func StartProxyContainer(client *Client, configPath string, networkName, proxyContainerName string, squidPort int) (string, error) {
 	args := []string{

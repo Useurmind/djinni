@@ -103,31 +103,6 @@ func (c *Client) SetupNetwork(agentName string, networkCfg *config.AgentNetworkC
 	return proxyInfo, nil
 }
 
-func (c *Client) CleanupNetwork(proxyInfo *ProxyContainerInfo) error {
-	if proxyInfo == nil {
-		return nil
-	}
-
-	// Remove proxy container
-	if err := RemoveProxyContainer(c, proxyInfo.Name); err != nil {
-		log.Error(fmt.Sprintf("Failed to remove proxy container: %v", err))
-	}
-
-	// Remove internal network
-	if err := RemoveNetwork(c, proxyInfo.NetworkName); err != nil {
-		log.Error(fmt.Sprintf("Failed to remove network: %v", err))
-	}
-
-	// Cleanup proxy config files
-	if proxyInfo.SquidConfigPath != "" {
-		if err := CleanupProxyConfig(c.BaseDir, "repo", "agent", "task"); err != nil {
-			log.Error(fmt.Sprintf("Failed to cleanup proxy config: %v", err))
-		}
-	}
-
-	return nil
-}
-
 // CleanupExistingProxy stops and removes any existing proxy container for the agent
 func (c *Client) CleanupExistingProxy(agentName string) error {
 	proxyContainerName := fmt.Sprintf("djinni-proxy-%s", strings.ReplaceAll(agentName, "-", "_"))
@@ -156,28 +131,6 @@ func (c *Client) CleanupExistingNetwork(agentName string) error {
 	if err := RemoveNetwork(c, networkName); err != nil {
 		// Network might not exist, which is fine
 		log.Info(fmt.Sprintf("No existing network to remove: %s", networkName))
-	}
-
-	return nil
-}
-
-// CleanupExistingWorkspace removes any existing workspace for the task
-func (c *Client) CleanupExistingWorkspace(baseDir, agentName, taskName string) error {
-	// Workspace directory pattern used by git.CloneToTemp
-	workspacePattern := filepath.Join(baseDir, "temp-clones", fmt.Sprintf("%s-%s-*", agentName, taskName))
-
-	// Find and remove any matching workspace directories
-	matches, err := filepath.Glob(workspacePattern)
-	if err != nil {
-		return fmt.Errorf("failed to glob workspace pattern: %w", err)
-	}
-
-	for _, match := range matches {
-		if err := os.RemoveAll(match); err != nil {
-			log.Error(fmt.Sprintf("Failed to remove existing workspace %s: %v", match, err))
-		} else {
-			log.Info(fmt.Sprintf("Removed existing workspace: %s", match))
-		}
 	}
 
 	return nil
