@@ -35,7 +35,7 @@ func CreateInternalNetwork(client *Client, networkName string) error {
 
 // RemoveNetwork removes an internal podman network
 func RemoveNetwork(client *Client, networkName string) error {
-	args := []string{"network", "rm", networkName}
+	args := []string{"network", "rm", "-f", networkName}
 
 	cmd := exec.Command(client.Binary, args...)
 	output, err := cmd.CombinedOutput()

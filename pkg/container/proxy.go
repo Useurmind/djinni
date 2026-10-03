@@ -165,7 +165,7 @@ func StopProxyContainer(client *Client, proxyContainerName string) error {
 
 // RemoveProxyContainer removes the Squid proxy container
 func RemoveProxyContainer(client *Client, proxyContainerName string) error {
-	args := []string{"rm", proxyContainerName}
+	args := []string{"rm", "-f", proxyContainerName}
 
 	cmd := exec.Command(client.Binary, args...)
 	output, err := cmd.CombinedOutput()
